@@ -35,6 +35,7 @@ import {
   formatEuro,
   formatPct,
   formatSignedEuro,
+  toDecimalInput,
   todayIso,
 } from "@/lib/format";
 import { computeEnvelopeHeadroom } from "@/lib/portfolio/rebalance";
@@ -296,9 +297,9 @@ export default async function DashboardPage() {
                               ? `Montant de ${holding.name}`
                               : `Cours de ${holding.name}`
                           }
-                          defaultValue={
-                            isAmountMode ? holding.quantity : holding.unitPrice
-                          }
+                          defaultValue={toDecimalInput(
+                            isAmountMode ? holding.quantity : holding.unitPrice,
+                          )}
                         />
                       </TableCell>
                       <TableCell className="text-right font-medium tabular-nums">

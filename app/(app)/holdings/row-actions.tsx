@@ -1,7 +1,7 @@
-"use client";
+﻿"use client";
 
 import { Trash2Icon } from "lucide-react";
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 
 import {
   AlertDialog,
@@ -16,9 +16,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { IDLE } from "@/lib/action-state";
 import { notify } from "@/lib/notify";
 
-import { IDLE, removeHolding, toggleHoldingActive } from "./actions";
+import { removeHolding, toggleHoldingActive } from "./actions";
 
 /** Notifie une seule fois par résultat, grâce à l'horodatage de l'état. */
 function useActionToast(
@@ -57,11 +58,23 @@ export function ToggleHolding({
 }
 
 export function DeleteHolding({ id, name }: { id: string; name: string }) {
+  const [open, setOpen] = useState(false);
   const [state, formAction, pending] = useActionState(removeHolding, IDLE);
   useActionToast(state, "Ligne supprimée.");
 
+  // Contrôlé, comme les autres boîtes de dialogue : en non contrôlé, la
+  // confirmation resterait ouverte après la suppression, au-dessus d'une ligne
+  // qui n'existe plus.
+  const handledAt = useRef(0);
+  useEffect(() => {
+    if (state.ok && state.at !== handledAt.current) {
+      handledAt.current = state.at;
+      setOpen(false);
+    }
+  }, [state]);
+
   return (
-    <AlertDialog>
+    <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger
         render={<Button variant="ghost" size="sm" aria-label={`Supprimer ${name}`} />}
       >

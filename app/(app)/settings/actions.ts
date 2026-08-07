@@ -12,23 +12,11 @@ import {
   updateAssetClass,
   updateEnvelope,
 } from "@/lib/db/queries";
+import { actionFailure, actionSuccess, type ActionState } from "@/lib/action-state";
 import { getCurrentUser } from "@/lib/supabase/server";
 
-/**
- * `at` horodate chaque résultat : sans lui, un second succès identique au
- * premier ne déclencherait aucun effet côté client (même objet d'état), et la
- * boîte de dialogue resterait ouverte.
- */
-export type ActionState = { error: string | null; ok: boolean; at: number };
-export const IDLE: ActionState = { error: null, ok: false, at: 0 };
 
-function success(): ActionState {
-  return { error: null, ok: true, at: Date.now() };
-}
 
-function failure(message: string): ActionState {
-  return { error: message, ok: false, at: Date.now() };
-}
 
 /**
  * Les Server Actions sont joignables par une requête POST directe, pas
@@ -84,7 +72,7 @@ export async function saveEnvelope(
     color: formData.get("color") || null,
   });
   if (!parsed.success) {
-    return failure(parsed.error.issues[0]!.message);
+    return actionFailure(parsed.error.issues[0]!.message);
   }
 
   const payload = {
@@ -101,13 +89,13 @@ export async function saveEnvelope(
     }
   } catch (error) {
     if (isUniqueViolation(error)) {
-      return failure("Une enveloppe porte déjà ce nom.");
+      return actionFailure("Une enveloppe porte déjà ce nom.");
     }
     throw error;
   }
 
   revalidateEverything();
-  return success();
+  return actionSuccess();
 }
 
 const assetClassSchema = z.object({
@@ -129,7 +117,7 @@ export async function saveAssetClass(
     color: formData.get("color") || null,
   });
   if (!parsed.success) {
-    return failure(parsed.error.issues[0]!.message);
+    return actionFailure(parsed.error.issues[0]!.message);
   }
 
   const payload = { name: parsed.data.name, color: parsed.data.color };
@@ -142,13 +130,13 @@ export async function saveAssetClass(
     }
   } catch (error) {
     if (isUniqueViolation(error)) {
-      return failure("Une classe d'actifs porte déjà ce nom.");
+      return actionFailure("Une classe d'actifs porte déjà ce nom.");
     }
     throw error;
   }
 
   revalidateEverything();
-  return success();
+  return actionSuccess();
 }
 
 /**
@@ -169,7 +157,7 @@ export async function toggleActive(
   const nextActive = formData.get("isActive") === "true";
 
   if (typeof id !== "string" || (scope !== "envelope" && scope !== "assetClass")) {
-    return failure("Requête invalide.");
+    return actionFailure("Requête invalide.");
   }
 
   if (!nextActive) {
@@ -177,7 +165,7 @@ export async function toggleActive(
     if (used > 0) {
       const what = scope === "envelope" ? "cette enveloppe" : "cette classe";
       const plural = used > 1;
-      return failure(
+      return actionFailure(
         `Impossible de désactiver ${what} : ${used} ligne${plural ? "s" : ""} ` +
           `active${plural ? "s" : ""} y ${plural ? "sont" : "est"} ` +
           `rattachée${plural ? "s" : ""}. Réaffectez-les ou désactivez-les d'abord.`,
@@ -192,7 +180,7 @@ export async function toggleActive(
   }
 
   revalidateEverything();
-  return success();
+  return actionSuccess();
 }
 
 function isUniqueViolation(error: unknown): boolean {

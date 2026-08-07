@@ -9,6 +9,14 @@ import { getCurrentUser } from "@/lib/supabase/server";
 import { signOut } from "../login/actions";
 
 /**
+ * Ces pages lisent le portefeuille en direct : elles n'ont aucun sens
+ * pré-rendues. Sans cette déclaration, `next build` tente de les générer et
+ * ouvre une connexion base depuis chacun de ses neuf workers — ce qui a fait
+ * dépasser 60 secondes à /settings avant d'être réessayé.
+ */
+export const dynamic = "force-dynamic";
+
+/**
  * Garde d'authentification de second niveau.
  *
  * `proxy.ts` protège déjà ces routes, mais un Server Component reste

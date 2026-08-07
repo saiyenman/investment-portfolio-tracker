@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Decimal from "decimal.js";
 import { useActionState, useEffect, useRef, useState } from "react";
@@ -8,10 +8,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { IDLE } from "@/lib/action-state";
 import { notify } from "@/lib/notify";
 import { cn } from "@/lib/utils";
 
-import { IDLE, saveTargets } from "./actions";
+import { saveTargets } from "./actions";
 
 type ClassOption = { id: string; name: string; color: string | null };
 

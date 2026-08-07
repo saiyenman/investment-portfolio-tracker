@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
 
@@ -31,10 +31,11 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { todayIso } from "@/lib/format";
+import { toDecimalInput, todayIso } from "@/lib/format";
+import { IDLE } from "@/lib/action-state";
 import { notify } from "@/lib/notify";
 
-import { IDLE, saveHolding } from "./actions";
+import { saveHolding } from "./actions";
 
 export type HoldingFormValues = {
   id: string;
@@ -222,7 +223,7 @@ export function HoldingDialog({
                   id={`quantity-${uid}`}
                   name="quantity"
                   inputMode="decimal"
-                  defaultValue={holding?.quantity ?? ""}
+                  defaultValue={toDecimalInput(holding?.quantity)}
                   placeholder={isAmountMode ? "8400" : "12"}
                   autoComplete="off"
                 />
@@ -237,7 +238,7 @@ export function HoldingDialog({
                     id={`unitPrice-${uid}`}
                     name="unitPrice"
                     inputMode="decimal"
-                    defaultValue={holding?.unitPrice ?? ""}
+                    defaultValue={toDecimalInput(holding?.unitPrice)}
                     placeholder="485,20"
                     autoComplete="off"
                   />
@@ -268,7 +269,7 @@ export function HoldingDialog({
                 id={`costBasis-${uid}`}
                 name="costBasis"
                 inputMode="decimal"
-                defaultValue={holding?.costBasis ?? ""}
+                defaultValue={toDecimalInput(holding?.costBasis)}
                 placeholder="5100"
                 autoComplete="off"
               />

@@ -1,21 +1,14 @@
-"use server";
+﻿"use server";
 
 import Decimal from "decimal.js";
 import { revalidatePath } from "next/cache";
 
 import { listAssetClasses, replaceTargets } from "@/lib/db/queries";
 import { parseDecimalInput } from "@/lib/parse";
+import { actionFailure, actionSuccess, type ActionState } from "@/lib/action-state";
 import { getCurrentUser } from "@/lib/supabase/server";
 
-export type ActionState = { error: string | null; ok: boolean; at: number };
-export const IDLE: ActionState = { error: null, ok: false, at: 0 };
 
-const success = (): ActionState => ({ error: null, ok: true, at: Date.now() });
-const failure = (error: string): ActionState => ({
-  error,
-  ok: false,
-  at: Date.now(),
-});
 
 /**
  * Enregistre l'allocation cible.
@@ -42,7 +35,7 @@ export async function saveTargets(
 
     const pct = new Decimal(parsed);
     if (pct.greaterThan(100)) {
-      return failure(`« ${assetClass.name} » dépasse 100 %.`);
+      return actionFailure(`« ${assetClass.name} » dépasse 100 %.`);
     }
     total = total.plus(pct);
     // Les classes à 0 ne sont pas stockées : une cible nulle et une absence de
@@ -56,12 +49,12 @@ export async function saveTargets(
   }
 
   if (entries.length > 0 && !total.toDecimalPlaces(2).equals(100)) {
-    return failure(
+    return actionFailure(
       `La somme des cibles fait ${total.toDecimalPlaces(2).toString()} % au lieu de 100 %.`,
     );
   }
 
   await replaceTargets(entries);
   revalidatePath("/", "layout");
-  return success();
+  return actionSuccess();
 }

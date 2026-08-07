@@ -59,6 +59,20 @@ export function formatQuantity(value: string | number): string {
   return QTY.format(Number(value));
 }
 
+/**
+ * Prépare un NUMERIC pour un champ de saisie.
+ *
+ * Postgres renvoie `numeric(24,8)` sous la forme "10.00000000" : tel quel dans
+ * un input, c'est illisible et pénible à corriger. On retire les zéros
+ * inutiles et on passe à la virgule, cohérent avec le reste de l'interface —
+ * `parseDecimalInput` accepte les deux séparateurs au retour.
+ */
+export function toDecimalInput(value: string | null | undefined): string {
+  if (value === null || value === undefined || value === "") return "";
+  const trimmed = value.includes(".") ? value.replace(/\.?0+$/, "") : value;
+  return (trimmed === "" ? "0" : trimmed).replace(".", ",");
+}
+
 /** Date ISO (YYYY-MM-DD) → « 07/08/2026 ». */
 export function formatDate(value: string | null | undefined): string {
   if (!value) return "—";

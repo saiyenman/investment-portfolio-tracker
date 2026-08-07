@@ -22,9 +22,10 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { IDLE } from "@/lib/action-state";
 import { notify } from "@/lib/notify";
 
-import { IDLE, saveAssetClass, saveEnvelope } from "./actions";
+import { saveAssetClass, saveEnvelope } from "./actions";
 
 type Kind = "envelope" | "assetClass";
 

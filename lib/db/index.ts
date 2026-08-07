@@ -8,14 +8,24 @@ import * as schema from "./schema";
 /**
  * Client Postgres de l'application.
  *
- * Deux points spécifiques à Supabase :
+ * Trois réglages, tous imposés par le pooler Supabase (Supavisor) :
  *
  * 1. `prepare: false` — le pooler transactionnel (port 6543) ne supporte pas
- *    les requêtes préparées. Sans ce réglage, les requêtes échouent de façon
- *    déroutante ("prepared statement already exists"). Le coût est nul sur une
- *    charge personnelle.
- * 2. `max: 1` — en environnement serverless chaque instance ouvre son propre
- *    pool ; un pool large par instance saturerait la base.
+ *    les requêtes préparées. Sans ce réglage, les requêtes échouent avec
+ *    « prepared statement already exists ».
+ *
+ * 2. `max: 4` — et surtout PAS 1. postgres.js pipeline les requêtes
+ *    concurrentes sur une même connexion, ce que Supavisor en mode
+ *    transaction ne gère pas : la transaction reste ouverte côté serveur en
+ *    attente `ClientRead`, et la requête finit annulée par le statement
+ *    timeout. Observé en conditions réelles : `loadPortfolio()` lance quatre
+ *    requêtes en parallèle, ce qui suffisait à bloquer la page 36 secondes.
+ *    Avec un pool, chaque requête concurrente obtient sa propre connexion et
+ *    aucun pipelining n'a lieu. Le chiffre couvre les quatre requêtes
+ *    parallèles de `loadPortfolio()`.
+ *
+ * 3. `idle_timeout` — les connexions inactives sont rendues au pooler plutôt
+ *    que gardées ouvertes entre deux consultations.
  *
  * L'initialisation est paresseuse : sans cela, `next build` échouerait dès
  * qu'une page est préchargée sans DATABASE_URL dans l'environnement.
@@ -33,7 +43,12 @@ function createClient() {
         "(Supabase → Project Settings → Database → Connection string → Transaction pooler).",
     );
   }
-  const client = postgres(url, { prepare: false, max: 1 });
+  const client = postgres(url, {
+    prepare: false,
+    max: 4,
+    idle_timeout: 20,
+    connect_timeout: 10,
+  });
   return drizzle(client, { schema });
 }
 

@@ -1,4 +1,4 @@
-"use server";
+﻿"use server";
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -11,17 +11,10 @@ import {
   updateHoldingValue,
 } from "@/lib/db/queries";
 import { parseDecimalInput, parseIsoDate, parseOptionalText } from "@/lib/parse";
+import { actionFailure, actionSuccess, type ActionState } from "@/lib/action-state";
 import { getCurrentUser } from "@/lib/supabase/server";
 
-export type ActionState = { error: string | null; ok: boolean; at: number };
-export const IDLE: ActionState = { error: null, ok: false, at: 0 };
 
-const success = (): ActionState => ({ error: null, ok: true, at: Date.now() });
-const failure = (error: string): ActionState => ({
-  error,
-  ok: false,
-  at: Date.now(),
-});
 
 async function requireUser() {
   const user = await getCurrentUser();
@@ -59,7 +52,7 @@ export async function saveHolding(
     inputMode: formData.get("inputMode"),
   });
   if (!parsed.success) {
-    return failure(parsed.error.issues[0]!.message);
+    return actionFailure(parsed.error.issues[0]!.message);
   }
 
   const isAmountMode = parsed.data.inputMode === "AMOUNT";
@@ -72,10 +65,10 @@ export async function saveHolding(
     : parseDecimalInput(formData.get("unitPrice"));
 
   if (unitPrice === null) {
-    return failure("Le cours unitaire est invalide.");
+    return actionFailure("Le cours unitaire est invalide.");
   }
   if (!isAmountMode && Number(unitPrice) === 0 && Number(quantity) > 0) {
-    return failure(
+    return actionFailure(
       "Un cours à zéro avec une quantité non nulle donnerait une valeur nulle. " +
         "Renseignez le cours, ou passez la ligne en saisie par montant.",
     );
@@ -102,13 +95,13 @@ export async function saveHolding(
     }
   } catch (error) {
     if (isUniqueViolation(error)) {
-      return failure("Cette enveloppe contient déjà une ligne portant ce nom.");
+      return actionFailure("Cette enveloppe contient déjà une ligne portant ce nom.");
     }
     throw error;
   }
 
   revalidateEverything();
-  return success();
+  return actionSuccess();
 }
 
 /**
@@ -128,12 +121,12 @@ export async function saveHoldingValue(
     parseIsoDate(formData.get("priceUpdatedAt")) ??
     new Date().toISOString().slice(0, 10);
 
-  if (typeof id !== "string" || id === "") return failure("Ligne introuvable.");
-  if (value === null) return failure("Valeur invalide.");
+  if (typeof id !== "string" || id === "") return actionFailure("Ligne introuvable.");
+  if (value === null) return actionFailure("Valeur invalide.");
 
   await updateHoldingValue(id, inputMode, value, priceUpdatedAt);
   revalidateEverything();
-  return success();
+  return actionSuccess();
 }
 
 export async function toggleHoldingActive(
@@ -143,11 +136,11 @@ export async function toggleHoldingActive(
   await requireUser();
 
   const id = formData.get("id");
-  if (typeof id !== "string" || id === "") return failure("Ligne introuvable.");
+  if (typeof id !== "string" || id === "") return actionFailure("Ligne introuvable.");
 
   await setHoldingActive(id, formData.get("isActive") === "true");
   revalidateEverything();
-  return success();
+  return actionSuccess();
 }
 
 /**
@@ -162,11 +155,11 @@ export async function removeHolding(
   await requireUser();
 
   const id = formData.get("id");
-  if (typeof id !== "string" || id === "") return failure("Ligne introuvable.");
+  if (typeof id !== "string" || id === "") return actionFailure("Ligne introuvable.");
 
   await deleteHolding(id);
   revalidateEverything();
-  return success();
+  return actionSuccess();
 }
 
 function isUniqueViolation(error: unknown): boolean {

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { CheckIcon } from "lucide-react";
 import { useActionState, useEffect, useRef } from "react";
@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { todayIso } from "@/lib/format";
+import { IDLE } from "@/lib/action-state";
 import { notify } from "@/lib/notify";
 
-import { IDLE, saveHoldingValue } from "./holdings/actions";
+import { saveHoldingValue } from "./holdings/actions";
 
 /**
  * Mise à jour de la valeur d'une ligne directement depuis le tableau de bord.

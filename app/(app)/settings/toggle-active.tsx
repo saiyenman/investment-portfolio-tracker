@@ -4,9 +4,10 @@ import { useActionState, useEffect, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { IDLE } from "@/lib/action-state";
 import { notify } from "@/lib/notify";
 
-import { IDLE, toggleActive } from "./actions";
+import { toggleActive } from "./actions";
 
 /**
  * Activation / désactivation logique.
