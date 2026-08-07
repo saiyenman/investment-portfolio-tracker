@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Skills d'agents : dépendances outillées, pas du code applicatif.
+    ".agents/**",
+    // SQL généré par drizzle-kit et rejoué tel quel sur Supabase.
+    "drizzle/**",
   ]),
 ]);
 
