@@ -20,11 +20,169 @@ import {
 } from "@/components/ui/table";
 import { listAssetClasses, listEnvelopes } from "@/lib/db/queries";
 import { formatEuro } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 import { NomenclatureDialog } from "./nomenclature-dialog";
 import { ToggleActive } from "./toggle-active";
 
 export const metadata: Metadata = { title: "Réglages — Suivi de patrimoine" };
+
+type Kind = "envelope" | "assetClass";
+
+type NomenclatureItem = {
+  id: string;
+  name: string;
+  color: string | null;
+  ceilingAmount?: string | null;
+  isActive: boolean;
+};
+
+function StatusBadge({ isActive }: { isActive: boolean }) {
+  return isActive ? (
+    <Badge variant="secondary">Active</Badge>
+  ) : (
+    <Badge variant="outline">Désactivée</Badge>
+  );
+}
+
+function ItemActions({ kind, item }: { kind: Kind; item: NomenclatureItem }) {
+  return (
+    <>
+      <NomenclatureDialog kind={kind} item={item} variant="ghost">
+        Modifier
+      </NomenclatureDialog>
+      <ToggleActive scope={kind} id={item.id} isActive={item.isActive} />
+    </>
+  );
+}
+
+/**
+ * Une section de nomenclature : enveloppes ou classes d'actifs.
+ *
+ * Les deux ne diffèrent que par leurs libellés et par la colonne « Plafond »,
+ * propre aux enveloppes. Une seule implémentation évite qu'elles divergent —
+ * c'est ainsi que la ligne désactivée s'était retrouvée grisée d'un côté
+ * seulement, et par un attribut `data-inactive` qu'aucune règle CSS ne visait.
+ */
+function NomenclatureSection({
+  kind,
+  title,
+  description,
+  createLabel,
+  items,
+  showCeiling = false,
+}: {
+  kind: Kind;
+  title: string;
+  description: string;
+  createLabel: string;
+  items: NomenclatureItem[];
+  showCeiling?: boolean;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+        <div className="ml-auto">
+          <NomenclatureDialog kind={kind}>
+            <PlusIcon data-icon="inline-start" />
+            {createLabel}
+          </NomenclatureDialog>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {/*
+          Sous md, la colonne Actions et ses deux boutons occupent 181 px
+          incompressibles : avec le nom, le plafond et le statut, le tableau
+          déborde de 141 px dans les 311 px d'un écran de téléphone. On bascule
+          donc sur des cartes, comme le tableau de bord et /holdings. Rien n'y
+          est masqué et il n'y a jamais à défiler latéralement.
+        */}
+        <ul className="flex flex-col gap-3 md:hidden">
+          {items.map((item) => (
+            <li
+              key={item.id}
+              className={cn(
+                "rounded-lg border p-3",
+                !item.isActive && "opacity-55",
+              )}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <span className="flex min-w-0 items-center gap-2 font-medium">
+                  <ColorDot slot={item.color} />
+                  {item.name}
+                </span>
+                <span className="shrink-0">
+                  <StatusBadge isActive={item.isActive} />
+                </span>
+              </div>
+
+              {showCeiling ? (
+                <p className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
+                  Plafond
+                  <span className="text-foreground tabular-nums">
+                    {item.ceilingAmount ? formatEuro(item.ceilingAmount) : "—"}
+                  </span>
+                </p>
+              ) : null}
+
+              <div className="mt-3 flex flex-wrap items-center gap-1 border-t pt-2">
+                <ItemActions kind={kind} item={item} />
+              </div>
+            </li>
+          ))}
+        </ul>
+
+        <div className="hidden md:block">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nom</TableHead>
+                {showCeiling ? (
+                  <TableHead className="text-right">Plafond</TableHead>
+                ) : null}
+                <TableHead>Statut</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {items.map((item) => (
+                <TableRow
+                  key={item.id}
+                  className={item.isActive ? undefined : "opacity-55"}
+                >
+                  {/* Seule colonne à contenu libre : la seule à pouvoir revenir
+                      à la ligne, sinon un nom long impose sa largeur au
+                      tableau. */}
+                  <TableCell className="w-full min-w-[8rem] font-medium whitespace-normal">
+                    <span className="flex items-center gap-2">
+                      <ColorDot slot={item.color} />
+                      {item.name}
+                    </span>
+                  </TableCell>
+                  {showCeiling ? (
+                    <TableCell className="text-right tabular-nums">
+                      {item.ceilingAmount ? formatEuro(item.ceilingAmount) : "—"}
+                    </TableCell>
+                  ) : null}
+                  <TableCell>
+                    <StatusBadge isActive={item.isActive} />
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center justify-end gap-1">
+                      <ItemActions kind={kind} item={item} />
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default async function SettingsPage() {
   // On inclut les éléments désactivés : sans cela, impossible de les réactiver.
@@ -44,133 +202,22 @@ export default async function SettingsPage() {
         </p>
       </header>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Enveloppes fiscales</CardTitle>
-          <CardDescription>
-            Les contenants : Livret A, PEA, Assurance-Vie, CTO, PER…
-          </CardDescription>
-          <div className="ml-auto">
-            <NomenclatureDialog kind="envelope">
-              <PlusIcon data-icon="inline-start" />
-              Nouvelle enveloppe
-            </NomenclatureDialog>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nom</TableHead>
-                <TableHead className="text-right">Plafond</TableHead>
-                <TableHead>Statut</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {envelopes.map((envelope) => (
-                <TableRow key={envelope.id} data-inactive={!envelope.isActive}>
-                  <TableCell className="w-full min-w-[8rem] font-medium whitespace-normal">
-                    <span className="flex items-center gap-2">
-                      <ColorDot slot={envelope.color} />
-                      {envelope.name}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {envelope.ceilingAmount
-                      ? formatEuro(envelope.ceilingAmount)
-                      : "—"}
-                  </TableCell>
-                  <TableCell>
-                    {envelope.isActive ? (
-                      <Badge variant="secondary">Active</Badge>
-                    ) : (
-                      <Badge variant="outline">Désactivée</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center justify-end gap-1">
-                      <NomenclatureDialog
-                        kind="envelope"
-                        item={envelope}
-                        variant="ghost"
-                      >
-                        Modifier
-                      </NomenclatureDialog>
-                      <ToggleActive
-                        scope="envelope"
-                        id={envelope.id}
-                        isActive={envelope.isActive}
-                      />
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      <NomenclatureSection
+        kind="envelope"
+        title="Enveloppes fiscales"
+        description="Les contenants : Livret A, PEA, Assurance-Vie, CTO, PER…"
+        createLabel="Nouvelle enveloppe"
+        items={envelopes}
+        showCeiling
+      />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Classes d&apos;actifs</CardTitle>
-          <CardDescription>
-            La nature du risque : Actions, Immobilier, Or, Crypto…
-          </CardDescription>
-          <div className="ml-auto">
-            <NomenclatureDialog kind="assetClass">
-              <PlusIcon data-icon="inline-start" />
-              Nouvelle classe
-            </NomenclatureDialog>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nom</TableHead>
-                <TableHead>Statut</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {assetClasses.map((assetClass) => (
-                <TableRow key={assetClass.id}>
-                  <TableCell className="w-full min-w-[8rem] font-medium whitespace-normal">
-                    <span className="flex items-center gap-2">
-                      <ColorDot slot={assetClass.color} />
-                      {assetClass.name}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    {assetClass.isActive ? (
-                      <Badge variant="secondary">Active</Badge>
-                    ) : (
-                      <Badge variant="outline">Désactivée</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center justify-end gap-1">
-                      <NomenclatureDialog
-                        kind="assetClass"
-                        item={assetClass}
-                        variant="ghost"
-                      >
-                        Modifier
-                      </NomenclatureDialog>
-                      <ToggleActive
-                        scope="assetClass"
-                        id={assetClass.id}
-                        isActive={assetClass.isActive}
-                      />
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      <NomenclatureSection
+        kind="assetClass"
+        title="Classes d'actifs"
+        description="La nature du risque : Actions, Immobilier, Or, Crypto…"
+        createLabel="Nouvelle classe"
+        items={assetClasses}
+      />
     </div>
   );
 }
