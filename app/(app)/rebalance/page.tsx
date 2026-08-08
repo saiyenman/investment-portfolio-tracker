@@ -116,34 +116,49 @@ export default async function RebalancePage() {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
+                    {/*
+                      Sous sm, six colonnes ne tiennent pas dans 311 px. On
+                      garde le trio qui répond à la question posée — quelle
+                      classe, de combien elle s'écarte, faut-il agir — et les
+                      valeurs de contexte reviennent dès qu'il y a la place.
+                    */}
                     <TableRow>
                       <TableHead>Classe</TableHead>
-                      <TableHead className="text-right">Cible</TableHead>
-                      <TableHead className="text-right">Actuel</TableHead>
+                      <TableHead className="hidden text-right sm:table-cell">
+                        Cible
+                      </TableHead>
+                      <TableHead className="hidden text-right sm:table-cell">
+                        Actuel
+                      </TableHead>
                       <TableHead className="text-right">Écart</TableHead>
-                      <TableHead className="text-right">En euros</TableHead>
+                      <TableHead className="hidden text-right sm:table-cell">
+                        En euros
+                      </TableHead>
                       <TableHead>État</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {drift.map((row) => (
                       <TableRow key={row.assetClassId}>
-                        <TableCell>
+                        {/* Seule colonne à contenu libre : la seule à pouvoir
+                            revenir à la ligne, sinon un nom de classe long
+                            impose sa largeur au tableau. */}
+                        <TableCell className="w-full min-w-[6rem] whitespace-normal">
                           <span className="flex items-center gap-2">
                             <ColorDot slot={row.color} />
                             {row.name}
                           </span>
                         </TableCell>
-                        <TableCell className="text-right tabular-nums">
+                        <TableCell className="hidden text-right tabular-nums sm:table-cell">
                           {formatPct(row.targetPct)}
                         </TableCell>
-                        <TableCell className="text-right tabular-nums">
+                        <TableCell className="hidden text-right tabular-nums sm:table-cell">
                           {formatPct(row.currentPct)}
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
                           {formatPoints(row.gapPct)}
                         </TableCell>
-                        <TableCell className="text-right tabular-nums text-muted-foreground">
+                        <TableCell className="hidden text-right tabular-nums text-muted-foreground sm:table-cell">
                           {formatEuro(row.gapValue)}
                         </TableCell>
                         <TableCell>

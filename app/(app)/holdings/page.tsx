@@ -239,7 +239,16 @@ export default async function HoldingsPage() {
                         key={holding.id}
                         className={holding.isActive ? undefined : "opacity-55"}
                       >
-                        <TableCell>
+                        {/*
+                          `whitespace-normal` annule le `whitespace-nowrap` que
+                          TableCell porte par défaut. Sans cela, un nom de
+                          support long ne peut ni revenir à la ligne ni être
+                          tronqué : il impose sa largeur au tableau, qui déborde
+                          et pousse la colonne Actions hors de l'écran. Seule
+                          cette colonne est assouplie ; les chiffres et les
+                          boutons restent insécables.
+                        */}
+                        <TableCell className="w-full min-w-[12rem] whitespace-normal">
                           <HoldingIdentity holding={holding} today={today} />
                         </TableCell>
                         <TableCell className="whitespace-nowrap">

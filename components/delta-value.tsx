@@ -47,8 +47,12 @@ export function DeltaValue({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 tabular-nums",
-        size === "lg" ? "text-2xl font-semibold" : "text-sm",
+        "inline-flex items-center gap-x-1.5 gap-y-0 tabular-nums",
+        // En grande taille — les tuiles de synthèse — « +3 543,22 € (+17,3 %) »
+        // ne tient pas sur une ligne : le pourcentage passe à la ligne d'un
+        // bloc plutôt que d'être rogné par le bord de la carte. En petite
+        // taille, dans le tableau, la colonne a la place : on garde une ligne.
+        size === "lg" ? "flex-wrap text-2xl font-semibold" : "text-sm",
         tone,
         className,
       )}
@@ -57,7 +61,9 @@ export function DeltaValue({
       <span className="sr-only">{label} : </span>
       <span>{formatSignedEuro(amount)}</span>
       {pct !== null && pct !== undefined ? (
-        <span className="text-xs opacity-80">
+        // Insécable : sans cela le pourcentage se coupe entre la virgule et le
+        // signe « % » dans les tuiles étroites — « (+17, » / « %) ».
+        <span className="whitespace-nowrap text-xs opacity-80">
           ({pct > 0 ? "+" : ""}
           {formatPct(pct)})
         </span>

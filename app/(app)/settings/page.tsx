@@ -70,7 +70,7 @@ export default async function SettingsPage() {
             <TableBody>
               {envelopes.map((envelope) => (
                 <TableRow key={envelope.id} data-inactive={!envelope.isActive}>
-                  <TableCell className="font-medium">
+                  <TableCell className="w-full min-w-[8rem] font-medium whitespace-normal">
                     <span className="flex items-center gap-2">
                       <ColorDot slot={envelope.color} />
                       {envelope.name}
@@ -136,7 +136,7 @@ export default async function SettingsPage() {
             <TableBody>
               {assetClasses.map((assetClass) => (
                 <TableRow key={assetClass.id}>
-                  <TableCell className="font-medium">
+                  <TableCell className="w-full min-w-[8rem] font-medium whitespace-normal">
                     <span className="flex items-center gap-2">
                       <ColorDot slot={assetClass.color} />
                       {assetClass.name}

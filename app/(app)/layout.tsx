@@ -41,9 +41,25 @@ export default async function AppLayout({
             <div className="flex items-center gap-1">
               <ThemeToggle />
               <form action={signOut}>
-                <Button type="submit" variant="ghost" size="sm">
+                {/*
+                  `aria-label` porté en permanence : sous md le libellé visible
+                  disparaît et le bouton se retrouverait réduit à une icône,
+                  sans nom accessible. Même texte que le libellé visible, donc
+                  aucune divergence entre ce qui s'affiche et ce qui s'annonce.
+                */}
+                <Button
+                  type="submit"
+                  variant="ghost"
+                  size="sm"
+                  aria-label="Déconnexion"
+                >
                   <LogOutIcon data-icon="inline-start" />
-                  <span className="hidden sm:inline">Déconnexion</span>
+                  {/*
+                    md et non sm : à 640 px exactement, les quatre libellés de
+                    navigation viennent d'apparaître et ce mot de plus fait
+                    déborder l'en-tête de 16 px, donc toute la page.
+                  */}
+                  <span className="hidden md:inline">Déconnexion</span>
                 </Button>
               </form>
             </div>

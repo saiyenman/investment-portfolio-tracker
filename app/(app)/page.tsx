@@ -235,20 +235,105 @@ export default async function DashboardPage() {
       <Card>
         <CardHeader>
           <CardTitle>Détail des lignes</CardTitle>
+          {/* Ne dit plus « la colonne » : sous md il n'y a plus de tableau. */}
           <CardDescription>
-            La colonne « valeur unitaire » est modifiable directement : en mode
-            montant, elle porte le solde de la ligne.
+            La valeur unitaire est modifiable directement : en mode montant,
+            elle porte le solde de la ligne.
           </CardDescription>
         </CardHeader>
         <CardContent>
           {/*
-            Sept colonnes ne tiennent pas sous 1024 px. Plutôt qu'un débordement
-            horizontal — que rien ne signale et qui masquait le champ de saisie —
-            les colonnes contextuelles s'effacent par paliers. Support, valeur
-            unitaire et valeur restent visibles partout : ce sont celles dont on
-            a besoin pour mettre les cours à jour, la tâche du quotidien.
+            Deux rendus pour une même donnée.
+
+            Sous md, même réduit à trois colonnes le tableau ne tient pas : le
+            champ de saisie du cours a une largeur incompressible, et le nom du
+            support a besoin d'au moins une douzaine de caractères pour rester
+            identifiable. On bascule donc sur des cartes, comme sur /holdings —
+            rien n'y est masqué et il n'y a jamais à défiler latéralement.
+
+            Au-delà, le tableau reprend, et ses colonnes contextuelles
+            s'effacent par paliers. Support, valeur unitaire et valeur restent
+            visibles partout : ce sont celles dont on a besoin pour mettre les
+            cours à jour, la tâche du quotidien.
           */}
-          <div>
+          <ul className="flex flex-col gap-3 md:hidden">
+            {summary.holdings.map((holding) => {
+              const assetClass = classById.get(holding.assetClassId);
+              const envelope = envelopeById.get(holding.envelopeId);
+              const isAmountMode = holding.inputMode === "AMOUNT";
+              return (
+                <li key={holding.id} className="rounded-lg border p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 flex-col gap-0.5">
+                      <span className="font-medium">{holding.name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {holding.isStalePrice ? (
+                          <Badge variant="outline">
+                            Valeur du {formatDate(holding.priceUpdatedAt)}
+                          </Badge>
+                        ) : (
+                          `Mis à jour le ${formatDate(holding.priceUpdatedAt)}`
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex shrink-0 flex-col items-end gap-0.5">
+                      <span className="font-medium tabular-nums">
+                        {formatEuro(holding.value)}
+                      </span>
+                      <span className="text-xs text-muted-foreground tabular-nums">
+                        {formatPct(holding.weightPct)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-1">
+                      <dt>Classe</dt>
+                      <dd className="flex items-center gap-1 text-foreground">
+                        <ColorDot slot={assetClass?.color ?? null} />
+                        {assetClass?.name ?? "—"}
+                      </dd>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <dt>Enveloppe</dt>
+                      <dd className="text-foreground">
+                        {envelope?.name ?? "—"}
+                      </dd>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <dt>+/-value</dt>
+                      <dd>
+                        <DeltaValue
+                          amount={holding.gain}
+                          pct={holding.gainPct}
+                        />
+                      </dd>
+                    </div>
+                  </dl>
+
+                  <div className="mt-3 flex items-center justify-between gap-3 border-t pt-2">
+                    <span className="text-sm text-muted-foreground">
+                      {isAmountMode ? "Montant" : "Cours unitaire"}
+                    </span>
+                    <QuickPriceForm
+                      id={holding.id}
+                      inputMode={holding.inputMode}
+                      label={
+                        isAmountMode
+                          ? `Montant de ${holding.name}`
+                          : `Cours de ${holding.name}`
+                      }
+                      defaultValue={toDecimalInput(
+                        isAmountMode ? holding.quantity : holding.unitPrice,
+                      )}
+                    />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+
+          <div className="hidden md:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -259,10 +344,9 @@ export default async function DashboardPage() {
                   </TableHead>
                   <TableHead className="text-right">Valeur unitaire</TableHead>
                   <TableHead className="text-right">Valeur</TableHead>
-                  <TableHead className="hidden text-right sm:table-cell">
-                    Poids
-                  </TableHead>
-                  <TableHead className="hidden text-right md:table-cell">
+                  <TableHead className="text-right">Poids</TableHead>
+                  {/* 194 px à elle seule : elle ne rentre qu'à partir de lg. */}
+                  <TableHead className="hidden text-right lg:table-cell">
                     +/-value
                   </TableHead>
                 </TableRow>
@@ -274,7 +358,15 @@ export default async function DashboardPage() {
                   const isAmountMode = holding.inputMode === "AMOUNT";
                   return (
                     <TableRow key={holding.id}>
-                      <TableCell>
+                      {/*
+                        `whitespace-normal` annule le `whitespace-nowrap` que
+                        TableCell porte par défaut. Sans cela, un nom de support
+                        long ne peut ni revenir à la ligne ni être tronqué : il
+                        impose sa largeur au tableau, qui déborde. C'est la seule
+                        colonne à contenu libre, donc la seule à assouplir — les
+                        colonnes de chiffres doivent rester insécables.
+                      */}
+                      <TableCell className="w-full min-w-[12rem] whitespace-normal">
                         <div className="flex flex-col gap-0.5">
                           <span className="font-medium">{holding.name}</span>
                           <span className="text-xs text-muted-foreground">
@@ -314,10 +406,10 @@ export default async function DashboardPage() {
                       <TableCell className="text-right font-medium tabular-nums">
                         {formatEuro(holding.value)}
                       </TableCell>
-                      <TableCell className="hidden text-right tabular-nums sm:table-cell">
+                      <TableCell className="text-right tabular-nums">
                         {formatPct(holding.weightPct)}
                       </TableCell>
-                      <TableCell className="hidden md:table-cell">
+                      <TableCell className="hidden lg:table-cell">
                         <div className="flex justify-end">
                           <DeltaValue
                             amount={holding.gain}

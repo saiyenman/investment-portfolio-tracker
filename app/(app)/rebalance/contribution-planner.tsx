@@ -102,7 +102,10 @@ export function ContributionPlanner({
             <TableBody>
               {plan.allocations.map((allocation) => (
                 <TableRow key={allocation.assetClassId}>
-                  <TableCell>
+                  {/* Seule colonne à contenu libre : la seule à pouvoir revenir
+                      à la ligne, sinon un nom de classe long impose sa largeur
+                      au tableau, qui déborde sur écran étroit. */}
+                  <TableCell className="w-full min-w-[6rem] whitespace-normal">
                     <span className="flex items-center gap-2">
                       <ColorDot slot={allocation.color} />
                       {allocation.name}
