@@ -2,6 +2,7 @@ import { LogOutIcon } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { AppNav } from "@/components/app-nav";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/toast";
 import { getCurrentUser } from "@/lib/supabase/server";
@@ -37,12 +38,15 @@ export default async function AppLayout({
         <header className="border-b">
           <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-3">
             <AppNav />
-            <form action={signOut}>
-              <Button type="submit" variant="ghost" size="sm">
-                <LogOutIcon data-icon="inline-start" />
-                <span className="hidden sm:inline">Déconnexion</span>
-              </Button>
-            </form>
+            <div className="flex items-center gap-1">
+              <ThemeToggle />
+              <form action={signOut}>
+                <Button type="submit" variant="ghost" size="sm">
+                  <LogOutIcon data-icon="inline-start" />
+                  <span className="hidden sm:inline">Déconnexion</span>
+                </Button>
+              </form>
+            </div>
           </div>
         </header>
 

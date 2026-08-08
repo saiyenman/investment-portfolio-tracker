@@ -32,7 +32,13 @@ export function AllocationDonut({
   title: string;
   emptyLabel?: string;
 }) {
-  if (items.length === 0 || Number(total) <= 0) {
+  // Une catégorie à 0 € produit un segment invisible et une ligne de légende
+  // « 0,00 € — 0,0 % » qui n'apprend rien : elle allonge la liste et dilue les
+  // parts réellement lisibles. On les compte pour le signaler, sans les tracer.
+  const funded = items.filter((item) => Number(item.value) > 0);
+  const emptyCount = items.length - funded.length;
+
+  if (funded.length === 0 || Number(total) <= 0) {
     return (
       <p className="py-12 text-center text-sm text-muted-foreground">
         {emptyLabel}
@@ -40,7 +46,7 @@ export function AllocationDonut({
     );
   }
 
-  const data = items.map((item, index) => ({
+  const data = funded.map((item, index) => ({
     id: item.id,
     name: item.name,
     amount: item.value,
@@ -130,6 +136,14 @@ export function AllocationDonut({
           </li>
         ))}
       </ul>
+
+      {emptyCount > 0 ? (
+        <p className="text-xs text-muted-foreground">
+          {emptyCount} catégorie{emptyCount > 1 ? "s" : ""} sans montant
+          {emptyCount > 1 ? " ne sont" : " n'est"} pas représentée
+          {emptyCount > 1 ? "s" : ""} ici.
+        </p>
+      ) : null}
     </div>
   );
 }

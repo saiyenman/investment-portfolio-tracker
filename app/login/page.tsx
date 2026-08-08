@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
   Card,
   CardContent,
@@ -16,7 +17,12 @@ export const metadata: Metadata = {
 
 export default function LoginPage() {
   return (
-    <main className="flex min-h-svh items-center justify-center p-6">
+    <main className="relative flex min-h-svh items-center justify-center p-6">
+      {/* Le sélecteur est aussi ici : sans lui, impossible de changer de thème
+          avant d'être authentifié. */}
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>Suivi de patrimoine</CardTitle>

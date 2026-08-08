@@ -37,7 +37,7 @@ export function LoginForm() {
         </Field>
 
         <Field data-invalid={state.error ? true : undefined}>
-          <FieldLabel htmlFor="password">Mot de passe</FieldLabel>
+          <FieldLabel htmlFor="password">Mot de passe (pass user Supabase)</FieldLabel>
           <Input
             id="password"
             name="password"

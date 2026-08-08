@@ -1,15 +1,25 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
+
+import { ThemeProvider } from "@/components/theme-provider";
+
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+/**
+ * Inter plutôt que Geist ou Roboto.
+ *
+ * Dessinée pour l'interface : hauteur d'x généreuse, formes ouvertes, lisible
+ * en petit corps. Surtout, ses chiffres tabulaires sont exemplaires — c'est ce
+ * qui aligne verticalement les colonnes de montants, condition de toute lecture
+ * comparative dans un tableau financier.
+ *
+ * `display: "swap"` affiche immédiatement la police de repli puis substitue :
+ * on évite le texte invisible au chargement (FOIT).
+ */
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -20,11 +30,16 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
+    // suppressHydrationWarning : next-themes pose la classe de thème sur <html>
+    // avant l'hydratation, ce que React signalerait sinon comme une divergence.
     <html
       lang="fr"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
+      className={`${inter.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
   );
 }

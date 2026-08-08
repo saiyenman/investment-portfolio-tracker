@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { AllocationDonut } from "@/components/allocation-donut";
 import { ColorDot } from "@/components/color-picker";
+import { DeltaValue } from "@/components/delta-value";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,7 +35,6 @@ import {
   formatDate,
   formatEuro,
   formatPct,
-  formatSignedEuro,
   toDecimalInput,
   todayIso,
 } from "@/lib/format";
@@ -47,22 +47,17 @@ function StatTile({
   label,
   value,
   hint,
-  badge,
 }: {
   label: string;
-  value: string;
+  value: React.ReactNode;
   hint?: string;
-  badge?: React.ReactNode;
 }) {
   return (
     <Card>
       <CardContent className="flex flex-col gap-1 pt-6">
         <p className="text-sm text-muted-foreground">{label}</p>
-        <p className="text-2xl font-semibold tabular-nums">{value}</p>
-        {badge}
-        {hint ? (
-          <p className="text-xs text-muted-foreground">{hint}</p>
-        ) : null}
+        <div className="text-2xl font-semibold tabular-nums">{value}</div>
+        {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
       </CardContent>
     </Card>
   );
@@ -159,16 +154,12 @@ export default async function DashboardPage() {
         />
         <StatTile
           label="Plus-value latente"
-          value={formatSignedEuro(summary.totalGain)}
-          badge={
-            summary.totalGainPct !== null ? (
-              <span>
-                <Badge variant="secondary">
-                  {summary.totalGainPct > 0 ? "+" : ""}
-                  {formatPct(summary.totalGainPct)}
-                </Badge>
-              </span>
-            ) : undefined
+          value={
+            <DeltaValue
+              amount={summary.totalGain}
+              pct={summary.totalGainPct}
+              size="lg"
+            />
           }
           hint="Sur les seules lignes dont le coût est renseigné"
         />
@@ -245,17 +236,30 @@ export default async function DashboardPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
+          {/*
+            Sept colonnes ne tiennent pas sous 1024 px. Plutôt qu'un débordement
+            horizontal — que rien ne signale et qui masquait le champ de saisie —
+            les colonnes contextuelles s'effacent par paliers. Support, valeur
+            unitaire et valeur restent visibles partout : ce sont celles dont on
+            a besoin pour mettre les cours à jour, la tâche du quotidien.
+          */}
+          <div>
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Support</TableHead>
-                  <TableHead>Classe</TableHead>
-                  <TableHead>Enveloppe</TableHead>
+                  <TableHead className="hidden lg:table-cell">Classe</TableHead>
+                  <TableHead className="hidden lg:table-cell">
+                    Enveloppe
+                  </TableHead>
                   <TableHead className="text-right">Valeur unitaire</TableHead>
                   <TableHead className="text-right">Valeur</TableHead>
-                  <TableHead className="text-right">Poids</TableHead>
-                  <TableHead className="text-right">+/-value</TableHead>
+                  <TableHead className="hidden text-right sm:table-cell">
+                    Poids
+                  </TableHead>
+                  <TableHead className="hidden text-right md:table-cell">
+                    +/-value
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -279,13 +283,13 @@ export default async function DashboardPage() {
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell className="whitespace-nowrap">
+                      <TableCell className="hidden whitespace-nowrap lg:table-cell">
                         <span className="flex items-center gap-2">
                           <ColorDot slot={assetClass?.color ?? null} />
                           {assetClass?.name ?? "—"}
                         </span>
                       </TableCell>
-                      <TableCell className="whitespace-nowrap">
+                      <TableCell className="hidden whitespace-nowrap lg:table-cell">
                         {envelope?.name ?? "—"}
                       </TableCell>
                       <TableCell>
@@ -305,23 +309,16 @@ export default async function DashboardPage() {
                       <TableCell className="text-right font-medium tabular-nums">
                         {formatEuro(holding.value)}
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">
+                      <TableCell className="hidden text-right tabular-nums sm:table-cell">
                         {formatPct(holding.weightPct)}
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {holding.gain === null ? (
-                          <span className="text-muted-foreground">—</span>
-                        ) : (
-                          <span className="flex flex-col items-end gap-0.5">
-                            <span>{formatSignedEuro(holding.gain)}</span>
-                            {holding.gainPct !== null ? (
-                              <Badge variant="secondary">
-                                {holding.gainPct > 0 ? "+" : ""}
-                                {formatPct(holding.gainPct)}
-                              </Badge>
-                            ) : null}
-                          </span>
-                        )}
+                      <TableCell className="hidden md:table-cell">
+                        <div className="flex justify-end">
+                          <DeltaValue
+                            amount={holding.gain}
+                            pct={holding.gainPct}
+                          />
+                        </div>
                       </TableCell>
                     </TableRow>
                   );

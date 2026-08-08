@@ -7,8 +7,14 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
+  /* `--font-sans: var(--font-sans)` était auto-référentiel, et le layout
+     exposait `--font-geist-sans` : la variable ne résolvait rien et toute
+     l'application retombait sur la police de repli du navigateur. On pointe
+     désormais explicitement la variable produite par next/font, avec une pile
+     de secours pour la fenêtre d'affichage avant substitution. */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -18,6 +24,8 @@
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
   --color-chart-8: var(--chart-8);
   --color-chart-7: var(--chart-7);
   --color-chart-6: var(--chart-6);
@@ -51,6 +59,35 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/*
+  Échelle typographique remontée d'un cran.
+
+  Les tailles par défaut de Tailwind (12/14/16) étaient trop justes pour un
+  écran qu'on lit longuement, et le corps de tableau à 14 px fatiguait. On
+  redéfinit ici les paliers plutôt que de changer chaque composant : un seul
+  endroit, et les espacements ne bougent pas — la densité du tableau de bord
+  est préservée.
+
+  Interlignes plus généreux sur les petits corps, plus serrés sur les titres,
+  conformément à la règle line-height 1.5 pour le texte courant.
+*/
+@theme {
+  --text-xs: 0.8125rem; /* 13 px — libellés secondaires */
+  --text-xs--line-height: 1.45;
+  --text-sm: 0.9375rem; /* 15 px — corps de tableau, boutons */
+  --text-sm--line-height: 1.5;
+  --text-base: 1.0625rem; /* 17 px — texte courant */
+  --text-base--line-height: 1.6;
+  --text-lg: 1.1875rem; /* 19 px */
+  --text-lg--line-height: 1.55;
+  --text-xl: 1.375rem; /* 22 px */
+  --text-xl--line-height: 1.4;
+  --text-2xl: 1.625rem; /* 26 px — titres de page */
+  --text-2xl--line-height: 1.3;
+  --text-3xl: 2rem; /* 32 px */
+  --text-3xl--line-height: 1.25;
+}
+
 :root {
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -58,8 +95,14 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
+  /* Accent d'interface du design system. La base « neutral » de shadcn rendait
+     tous les boutons gris : « Créer » avait le même poids visuel qu'« Annuler ».
+     Blanc sur ce bleu = 5,17:1 (AA), et le bouton se détache à 3,47:1 du fond
+     sombre — les deux thèmes passent, on garde donc la même valeur partout.
+     Volontairement proche de --chart-1 : ne jamais poser de bouton primaire
+     dans une carte contenant un graphique (cf. design-system/MASTER.md). */
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
@@ -69,7 +112,9 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  /* L'anneau de focus reprend l'accent : gris sur gris, il était à peine
+     perceptible au clavier. */
+  --ring: #2563eb;
   /* Palette catégorielle — l'ORDRE des slots est le mécanisme de sécurité
      daltonisme, pas un choix esthétique : ne pas réordonner sans revalider.
      Validée sur la surface claire (#ffffff) : bande de clarté, plancher de
@@ -77,6 +122,13 @@
      normale (ΔE 19.6) — tous PASS. Trois slots (aqua, jaune, magenta) sont
      sous 3:1 en clair : la règle de relief impose des libellés visibles et
      une vue tableau, présents sur le tableau de bord. */
+  /* Variations de valeur. Distincts des slots catégoriels pour qu'une couleur
+     de statut n'usurpe jamais l'identité d'une série. Contrastes sur fond
+     blanc : 7,5:1 et 4,8:1. Jamais employés seuls — toujours accompagnés du
+     signe et d'une icône directionnelle. */
+  --positive: #006300;
+  --negative: #d03b3b;
+
   --chart-1: #2a78d6; /* bleu */
   --chart-2: #eb6834; /* orange */
   --chart-3: #1baf7a; /* aqua */
@@ -103,8 +155,8 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
@@ -114,10 +166,14 @@
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --ring: #3b82f6;
   /* Mêmes huit teintes, redosées pour la surface sombre (#171717) — ce n'est
      pas une inversion automatique. Validée : tous les slots ≥ 3:1 ici, pire
      paire adjacente CVD ΔE 8.4, vision normale ΔE 19.3 — tous PASS. */
+  /* Redosés pour la surface sombre : 5,3:1 et 6,5:1. */
+  --positive: #0ca30c;
+  --negative: #f87171;
+
   --chart-1: #3987e5;
   --chart-2: #d95926;
   --chart-3: #199e70;
@@ -141,7 +197,7 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground text-base;
   }
   html {
     @apply font-sans;
