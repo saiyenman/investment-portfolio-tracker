@@ -46,7 +46,16 @@ export function QuickPriceForm({
       <input type="hidden" name="id" value={id} />
       <input type="hidden" name="inputMode" value={inputMode} />
       <input type="hidden" name="priceUpdatedAt" value={todayIso()} />
+      {/*
+        Même raison que dans les boîtes de dialogue : après l'enregistrement, la
+        page est revalidée et la valeur persistée redescend normalisée
+        (« 485,20 » saisi devient « 485,2 »), alors que ce champ non contrôlé
+        reste monté. La clé le remonte sur la valeur réellement en base, ce qui
+        évite l'avertissement et montre au passage ce qui a été enregistré. En
+        cas d'échec, `defaultValue` ne bouge pas : la saisie est conservée.
+      */}
       <Input
+        key={defaultValue}
         name="value"
         defaultValue={defaultValue}
         inputMode="decimal"

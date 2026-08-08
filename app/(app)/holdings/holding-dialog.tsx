@@ -109,7 +109,22 @@ export function HoldingDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form action={formAction} className="max-h-[70svh] overflow-y-auto">
+        {/*
+          Même remède que sur la boîte de dialogue de nomenclature : après
+          l'enregistrement, l'action revalide la page, le composant serveur se
+          re-rend et passe un nouvel `holding`, alors que la boîte de dialogue
+          reste montée. Les `defaultValue` changeraient donc sur des contrôles
+          non contrôlés déjà initialisés — d'où le message « changing the
+          default value state of an uncontrolled FieldControl ». La clé dérivée
+          des valeurs persistées remonte le formulaire avec des valeurs par
+          défaut neuves. Dix champs ici, d'où la sérialisation plutôt qu'une
+          énumération : oublier un champ ferait réapparaître l'avertissement.
+        */}
+        <form
+          key={holding ? JSON.stringify(holding) : "new"}
+          action={formAction}
+          className="max-h-[70svh] overflow-y-auto"
+        >
           <FieldGroup>
             {state.error ? (
               <Alert variant="destructive">
