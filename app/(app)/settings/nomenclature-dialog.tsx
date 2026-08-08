@@ -23,6 +23,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { IDLE } from "@/lib/action-state";
+import { toDecimalInput } from "@/lib/format";
 import { notify } from "@/lib/notify";
 
 import { saveAssetClass, saveEnvelope } from "./actions";
@@ -89,7 +90,24 @@ export function NomenclatureDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form action={formAction}>
+        {/*
+          `key` dérivée des valeurs persistées.
+
+          Après l'enregistrement, l'action revalide la page : le composant
+          serveur se re-rend et passe un nouvel `item`, alors que la boîte de
+          dialogue, elle, reste montée. Les `defaultValue` des champs changent
+          donc sur des contrôles non contrôlés déjà initialisés — d'où le
+          message « changing the default value state of an uncontrolled
+          FieldControl ». Changer la clé remonte le formulaire avec des valeurs
+          par défaut neuves, ce qui est le remède prévu par React pour
+          réinitialiser un état quand une prop change.
+        */}
+        <form
+          key={`${item?.id ?? "new"}|${item?.name ?? ""}|${item?.color ?? ""}|${
+            item?.ceilingAmount ?? ""
+          }`}
+          action={formAction}
+        >
           <FieldGroup>
             {state.error ? (
               <Alert variant="destructive">
@@ -122,7 +140,7 @@ export function NomenclatureDialog({
                   id={`ceiling-${item?.id ?? "new"}`}
                   name="ceilingAmount"
                   inputMode="decimal"
-                  defaultValue={item?.ceilingAmount ?? ""}
+                  defaultValue={toDecimalInput(item?.ceilingAmount)}
                   placeholder="22950"
                   autoComplete="off"
                 />

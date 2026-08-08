@@ -6,7 +6,7 @@ import { ColorDot } from "@/components/color-picker";
 import { DeltaValue } from "@/components/delta-value";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -95,10 +95,15 @@ export default async function DashboardPage() {
           </EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
-          <Button render={<Link href="/holdings" />}>
+          {/* Un lien stylé en bouton, et non un <Button render={<Link/>}> :
+              Base UI attend un <button> natif et signalait la perte de
+              sémantique. Ici la destination est une navigation, donc c'est bien
+              une ancre qu'il faut — avec le clic milieu et « ouvrir dans un
+              nouvel onglet » qui vont avec. */}
+          <Link href="/holdings" className={buttonVariants()}>
             <PlusIcon data-icon="inline-start" />
             Ajouter une ligne
-          </Button>
+          </Link>
         </EmptyContent>
       </Empty>
     );
