@@ -98,10 +98,19 @@ export async function saveEnvelope(
   return actionSuccess();
 }
 
+/** "" → null : une description vide ne doit pas devenir une chaîne vide. */
+const descriptionSchema = z
+  .string()
+  .trim()
+  .max(400, "La description ne doit pas dépasser 400 caractères.")
+  .transform((value) => (value === "" ? null : value))
+  .nullable();
+
 const assetClassSchema = z.object({
   id: z.uuid().optional(),
   name: nameSchema,
   color: colorSchema,
+  description: descriptionSchema,
 });
 
 export async function saveAssetClass(
@@ -115,12 +124,17 @@ export async function saveAssetClass(
     id: typeof rawId === "string" && rawId !== "" ? rawId : undefined,
     name: formData.get("name"),
     color: formData.get("color") || null,
+    description: formData.get("description") ?? null,
   });
   if (!parsed.success) {
     return actionFailure(parsed.error.issues[0]!.message);
   }
 
-  const payload = { name: parsed.data.name, color: parsed.data.color };
+  const payload = {
+    name: parsed.data.name,
+    color: parsed.data.color,
+    description: parsed.data.description,
+  };
 
   try {
     if (parsed.data.id) {

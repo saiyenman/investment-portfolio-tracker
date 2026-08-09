@@ -34,6 +34,7 @@ type NomenclatureItem = {
   name: string;
   color: string | null;
   ceilingAmount?: string | null;
+  description?: string | null;
   isActive: boolean;
 };
 
@@ -71,6 +72,7 @@ function NomenclatureSection({
   createLabel,
   items,
   showCeiling = false,
+  showDescription = false,
 }: {
   kind: Kind;
   title: string;
@@ -78,6 +80,7 @@ function NomenclatureSection({
   createLabel: string;
   items: NomenclatureItem[];
   showCeiling?: boolean;
+  showDescription?: boolean;
 }) {
   return (
     <Card>
@@ -127,6 +130,12 @@ function NomenclatureSection({
                 </p>
               ) : null}
 
+              {showDescription && item.description ? (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {item.description}
+                </p>
+              ) : null}
+
               <div className="mt-3 flex flex-wrap items-center gap-1 border-t pt-2">
                 <ItemActions kind={kind} item={item} />
               </div>
@@ -142,6 +151,11 @@ function NomenclatureSection({
                 {showCeiling ? (
                   <TableHead className="text-right">Plafond</TableHead>
                 ) : null}
+                {showDescription ? (
+                  <TableHead className="hidden lg:table-cell">
+                    Description
+                  </TableHead>
+                ) : null}
                 <TableHead>Statut</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -152,10 +166,18 @@ function NomenclatureSection({
                   key={item.id}
                   className={item.isActive ? undefined : "opacity-55"}
                 >
-                  {/* Seule colonne à contenu libre : la seule à pouvoir revenir
-                      à la ligne, sinon un nom long impose sa largeur au
-                      tableau. */}
-                  <TableCell className="w-full min-w-[8rem] font-medium whitespace-normal">
+                  {/* Colonnes à contenu libre : les seules à pouvoir revenir à
+                      la ligne, sinon leur contenu impose sa largeur au tableau.
+                      `w-full` désigne celle qui absorbe la place restante — la
+                      description quand elle est visible, le nom sinon. La
+                      description ne s'affiche qu'à partir de lg, d'où la bascule
+                      au même palier. */}
+                  <TableCell
+                    className={cn(
+                      "min-w-[8rem] font-medium whitespace-normal",
+                      showDescription ? "w-full lg:w-auto" : "w-full",
+                    )}
+                  >
                     <span className="flex items-center gap-2">
                       <ColorDot slot={item.color} />
                       {item.name}
@@ -164,6 +186,11 @@ function NomenclatureSection({
                   {showCeiling ? (
                     <TableCell className="text-right tabular-nums">
                       {item.ceilingAmount ? formatEuro(item.ceilingAmount) : "—"}
+                    </TableCell>
+                  ) : null}
+                  {showDescription ? (
+                    <TableCell className="hidden w-full min-w-[14rem] whitespace-normal text-muted-foreground lg:table-cell">
+                      {item.description ?? "—"}
                     </TableCell>
                   ) : null}
                   <TableCell>
@@ -217,6 +244,7 @@ export default async function SettingsPage() {
         description="La nature du risque : Actions, Immobilier, Or, Crypto…"
         createLabel="Nouvelle classe"
         items={assetClasses}
+        showDescription
       />
     </div>
   );

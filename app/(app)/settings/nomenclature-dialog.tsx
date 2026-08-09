@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { Textarea } from "@/components/ui/textarea";
 import { IDLE } from "@/lib/action-state";
 import { toDecimalInput } from "@/lib/format";
 import { notify } from "@/lib/notify";
@@ -35,6 +36,7 @@ type Item = {
   name: string;
   color: string | null;
   ceilingAmount?: string | null;
+  description?: string | null;
 };
 
 const LABELS: Record<Kind, { singular: string; create: string }> = {
@@ -105,7 +107,7 @@ export function NomenclatureDialog({
         <form
           key={`${item?.id ?? "new"}|${item?.name ?? ""}|${item?.color ?? ""}|${
             item?.ceilingAmount ?? ""
-          }`}
+          }|${item?.description ?? ""}`}
           action={formAction}
         >
           <FieldGroup>
@@ -147,6 +149,26 @@ export function NomenclatureDialog({
                 <FieldDescription>
                   Facultatif. Renseigné, il affiche la marge restante et écrête
                   les propositions de versement.
+                </FieldDescription>
+              </Field>
+            ) : null}
+
+            {kind === "assetClass" ? (
+              <Field>
+                <FieldLabel htmlFor={`description-${item?.id ?? "new"}`}>
+                  Description
+                </FieldLabel>
+                <Textarea
+                  id={`description-${item?.id ?? "new"}`}
+                  name="description"
+                  rows={3}
+                  maxLength={400}
+                  defaultValue={item?.description ?? ""}
+                  placeholder="Capital disponible à tout moment et sans risque de perte en capital…"
+                />
+                <FieldDescription>
+                  Facultatif. S&apos;affiche au survol de l&apos;icône, à côté
+                  de la classe, sur l&apos;écran de rééquilibrage.
                 </FieldDescription>
               </Field>
             ) : null}

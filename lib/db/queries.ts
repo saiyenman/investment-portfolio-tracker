@@ -111,6 +111,12 @@ export async function loadPortfolio() {
     assetClasses: classRefs,
     holdings: holdingInputs,
     holdingRows,
+    /**
+     * Les lignes brutes, comme `holdingRows` : la description d'une classe est
+     * de la présentation, pas du calcul. La mettre dans NamedRef ferait entrer
+     * du texte d'affichage dans les types du moteur, qui n'en a que faire.
+     */
+    assetClassRows: classRows,
     targets: new Map(targetRows.map((t) => [t.assetClassId, Number(t.targetPct)])),
   };
 }
@@ -150,7 +156,11 @@ export async function updateEnvelope(id: string, input: EnvelopeInput) {
   return row;
 }
 
-export type AssetClassInput = { name: string; color: string | null };
+export type AssetClassInput = {
+  name: string;
+  color: string | null;
+  description: string | null;
+};
 
 export async function createAssetClass(input: AssetClassInput) {
   const db = getDb();

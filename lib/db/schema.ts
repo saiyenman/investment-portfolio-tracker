@@ -46,6 +46,13 @@ export const assetClasses = pgTable("asset_classes", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull().unique(),
   color: text("color"),
+  /**
+   * À quoi correspond cette classe. Portée par la ligne et non par une table
+   * de correspondance dans le code : la nomenclature est dynamique, une classe
+   * créée depuis /settings n'aurait sinon aucune explication, et un renommage
+   * ferait disparaître celle d'une classe existante.
+   */
+  description: text("description"),
   sortOrder: integer("sort_order").notNull().default(0),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true })

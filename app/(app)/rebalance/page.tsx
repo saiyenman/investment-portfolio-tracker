@@ -90,10 +90,11 @@ export default async function RebalancePage() {
           </CardHeader>
           <CardContent>
             <TargetsForm
-              assetClasses={data.assetClasses.map((c) => ({
+              assetClasses={data.assetClassRows.map((c) => ({
                 id: c.id,
                 name: c.name,
                 color: c.color,
+                description: c.description,
               }))}
               targets={targetsRecord}
             />

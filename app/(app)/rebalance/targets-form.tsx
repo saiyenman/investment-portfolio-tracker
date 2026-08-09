@@ -4,6 +4,7 @@ import Decimal from "decimal.js";
 import { useActionState, useEffect, useRef, useState } from "react";
 
 import { ColorDot } from "@/components/color-picker";
+import { InfoHint } from "@/components/info-hint";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +15,12 @@ import { cn } from "@/lib/utils";
 
 import { saveTargets } from "./actions";
 
-type ClassOption = { id: string; name: string; color: string | null };
+type ClassOption = {
+  id: string;
+  name: string;
+  color: string | null;
+  description: string | null;
+};
 
 export function TargetsForm({
   assetClasses,
@@ -63,13 +69,26 @@ export function TargetsForm({
             key={assetClass.id}
             className="flex items-center justify-between gap-3"
           >
-            <label
-              htmlFor={`target-${assetClass.id}`}
-              className="flex min-w-0 items-center gap-2 text-sm"
-            >
-              <ColorDot slot={assetClass.color} />
-              <span className="truncate">{assetClass.name}</span>
-            </label>
+            {/*
+              L'icône est hors du <label> : y placer un bouton le rendrait
+              cliquable pour ouvrir l'explication au lieu de donner le focus au
+              champ, et un contrôle interactif imbriqué dans un label est une
+              erreur de structure.
+            */}
+            <div className="flex min-w-0 items-center gap-1.5">
+              <label
+                htmlFor={`target-${assetClass.id}`}
+                className="flex min-w-0 items-center gap-2 text-sm"
+              >
+                <ColorDot slot={assetClass.color} />
+                <span className="truncate">{assetClass.name}</span>
+              </label>
+              {assetClass.description ? (
+                <InfoHint title={assetClass.name}>
+                  {assetClass.description}
+                </InfoHint>
+              ) : null}
+            </div>
             <div className="flex shrink-0 items-center gap-1">
               <Input
                 id={`target-${assetClass.id}`}

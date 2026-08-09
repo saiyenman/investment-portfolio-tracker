@@ -22,11 +22,22 @@ insert into public.envelopes (name, color, ceiling_amount, sort_order) values
 on conflict (name) do nothing;
 
 -- Niveau 2 — classes d'actifs
-insert into public.asset_classes (name, color, sort_order) values
-  ('Liquidités / Sécurisé', 'chart-1', 1),
-  ('Actions',               'chart-2', 2),
-  ('Immobilier',            'chart-3', 3),
-  ('Matières premières',    'chart-4', 4)
+--
+-- `description` : ce qu'affiche l'icône d'explication sur /rebalance. Elle est
+-- portée par la ligne et non par une table de correspondance dans le code, car
+-- la nomenclature est dynamique — une classe créée depuis /settings doit
+-- pouvoir avoir la sienne, et un renommage ne doit pas faire disparaître le
+-- texte. Ce sont des définitions, pas des conseils : aucune allocation n'est
+-- suggérée nulle part dans l'application.
+insert into public.asset_classes (name, color, sort_order, description) values
+  ('Liquidités / Sécurisé', 'chart-1', 1,
+   'Capital disponible à tout moment et sans risque de perte : livrets réglementés, fonds euro, comptes à terme. Le rendement est faible et peut passer sous l''inflation, ce qui érode le pouvoir d''achat sur longue période.'),
+  ('Actions',               'chart-2', 2,
+   'Parts d''entreprises cotées, le plus souvent détenues via un fonds indiciel qui réplique un indice (MSCI World, S&P 500…). Historiquement la classe la plus rémunératrice sur plusieurs décennies, avec des baisses de 30 à 50 % survenues à plusieurs reprises en cours de route.'),
+  ('Immobilier',            'chart-3', 3,
+   'Immobilier détenu en direct ou via des parts : SCPI, SCI, foncières cotées. Verse des revenus locatifs réguliers. Frais d''entrée élevés et revente lente — pour une SCPI, c''est la valeur de retrait qui compte, environ 10 % sous le prix de souscription.'),
+  ('Matières premières',    'chart-4', 4,
+   'Or, métaux et énergie, le plus souvent via un ETC adossé au métal physique. Ne produit ni intérêt ni dividende : la performance vient uniquement du prix. Évolue souvent à contretemps des actions.')
 on conflict (name) do nothing;
 
 -- Niveau 3 — lignes de portefeuille (support × enveloppe)
