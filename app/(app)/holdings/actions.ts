@@ -10,7 +10,12 @@ import {
   updateHolding,
   updateHoldingValue,
 } from "@/lib/db/queries";
-import { parseDecimalInput, parseIsoDate, parseOptionalText } from "@/lib/parse";
+import {
+  parseDecimalInput,
+  parseIsoDate,
+  parseOptionalText,
+  parseQuoteSymbol,
+} from "@/lib/parse";
 import { actionFailure, actionSuccess, type ActionState } from "@/lib/action-state";
 import { getCurrentUser } from "@/lib/supabase/server";
 
@@ -77,6 +82,11 @@ export async function saveHolding(
   const payload = {
     name: parsed.data.name,
     isin: parseOptionalText(formData.get("isin"), 12),
+    // Un symbole n'a de sens qu'en mode parts × cours : en mode montant le
+    // cours vaut 1 par construction, et rien ne doit venir l'écraser.
+    quoteSymbol: isAmountMode
+      ? null
+      : parseQuoteSymbol(formData.get("quoteSymbol")),
     envelopeId: parsed.data.envelopeId,
     assetClassId: parsed.data.assetClassId,
     inputMode: parsed.data.inputMode,

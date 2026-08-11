@@ -1,11 +1,17 @@
 import "server-only";
 
-import { and, asc, count, eq, sql } from "drizzle-orm";
+import { and, asc, count, eq, inArray, sql } from "drizzle-orm";
 
 import type { HoldingInput, NamedRef } from "@/lib/portfolio/types";
 
 import { getDb } from "./index";
-import { allocationTargets, assetClasses, envelopes, holdings } from "./schema";
+import {
+  allocationTargets,
+  assetClasses,
+  envelopes,
+  holdings,
+  quotes,
+} from "./schema";
 
 /**
  * Toute la couche SQL de l'application vit ici — jamais dans les composants.
@@ -41,6 +47,7 @@ export async function listHoldings(includeInactive = false) {
       id: holdings.id,
       name: holdings.name,
       isin: holdings.isin,
+      quoteSymbol: holdings.quoteSymbol,
       envelopeId: holdings.envelopeId,
       assetClassId: holdings.assetClassId,
       inputMode: holdings.inputMode,
@@ -104,6 +111,7 @@ export async function loadPortfolio() {
     costBasis: h.costBasis,
     priceUpdatedAt: h.priceUpdatedAt,
     isin: h.isin,
+    quoteSymbol: h.quoteSymbol,
   }));
 
   return {
@@ -214,9 +222,55 @@ export async function setAssetClassActive(id: string, isActive: boolean) {
   await db.update(assetClasses).set({ isActive }).where(eq(assetClasses.id, id));
 }
 
+// ─────────────────────────────────────────────────────────── Cotations
+
+export async function readQuotes(symbols: string[]) {
+  if (symbols.length === 0) return [];
+  const db = getDb();
+  return db.select().from(quotes).where(inArray(quotes.symbol, symbols));
+}
+
+export type QuoteWriteInput = {
+  symbol: string;
+  price: string;
+  currency: string;
+  marketTime: Date | null;
+  shortName: string | null;
+};
+
+/**
+ * Écrase la cotation de chaque symbole.
+ *
+ * `fetched_at` est réécrit à chaque passage, y compris quand le cours n'a pas
+ * bougé : c'est lui qui porte le délai de péremption, pas le cours.
+ *
+ * Il est daté par `now()` côté Postgres, jamais par l'horloge de
+ * l'application : la fraîcheur est ensuite comparée à cette même horloge. Les
+ * dater séparément a déjà produit un âge négatif de trois secondes ; un
+ * décalage de quelques minutes fausserait le délai de rafraîchissement.
+ */
+export async function upsertQuotes(rows: QuoteWriteInput[]) {
+  if (rows.length === 0) return;
+  const db = getDb();
+  await db
+    .insert(quotes)
+    .values(rows)
+    .onConflictDoUpdate({
+      target: quotes.symbol,
+      set: {
+        price: sql`excluded.price`,
+        currency: sql`excluded.currency`,
+        marketTime: sql`excluded.market_time`,
+        shortName: sql`excluded.short_name`,
+        fetchedAt: sql`now()`,
+      },
+    });
+}
+
 export type HoldingWriteInput = {
   name: string;
   isin: string | null;
+  quoteSymbol: string | null;
   envelopeId: string;
   assetClassId: string;
   inputMode: "QUANTITY" | "AMOUNT";

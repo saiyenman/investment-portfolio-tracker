@@ -30,6 +30,19 @@ export function parseOptionalText(raw: unknown, maxLength = 500): string | null 
   return trimmed.slice(0, maxLength);
 }
 
+/**
+ * Symbole de cotation Yahoo — « nvda » → "NVDA", « cspx.l » → "CSPX.L".
+ *
+ * Normalisé en majuscules parce que Yahoo y est sensible, et débarrassé des
+ * espaces qu'un copier-coller depuis une page de cotation traîne souvent.
+ */
+export function parseQuoteSymbol(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const cleaned = raw.trim().replace(SPACES, "").toUpperCase();
+  if (cleaned === "") return null;
+  return cleaned.slice(0, 24);
+}
+
 /** Date ISO stricte (YYYY-MM-DD), telle que produite par <input type="date">. */
 export function parseIsoDate(raw: unknown): string | null {
   if (typeof raw !== "string") return null;

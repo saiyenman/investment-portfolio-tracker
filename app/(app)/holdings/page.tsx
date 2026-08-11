@@ -20,14 +20,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  listAssetClasses,
-  listEnvelopes,
-  listHoldings,
-  type HoldingRow,
-} from "@/lib/db/queries";
+import { QuoteBadge } from "@/components/quoted-price";
+import { type HoldingRow } from "@/lib/db/queries";
 import { formatDate, formatEuro, formatQuantity, todayIso } from "@/lib/format";
 import { holdingValue, isPriceStale } from "@/lib/portfolio/valuation";
+import { listHoldingsWithQuotes } from "@/lib/quotes/load";
 import { cn } from "@/lib/utils";
 
 import { HoldingDialog } from "./holding-dialog";
@@ -51,6 +48,9 @@ function HoldingIdentity({
     <div className="flex min-w-0 flex-col gap-0.5">
       <span className="font-medium">{holding.name}</span>
       <span className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+        {holding.quoteSymbol ? (
+          <QuoteBadge symbol={holding.quoteSymbol} />
+        ) : null}
         {holding.isin ? (
           <span className="tabular-nums">{holding.isin}</span>
         ) : null}
@@ -93,11 +93,10 @@ function HoldingActions({
 }
 
 export default async function HoldingsPage() {
-  const [holdings, envelopes, assetClasses] = await Promise.all([
-    listHoldings(true),
-    listEnvelopes(),
-    listAssetClasses(),
-  ]);
+  // Cours appliqués ici aussi : une même ligne ne peut pas valoir deux
+  // montants différents selon l'écran qu'on regarde.
+  const { holdings, envelopes, assetClasses } =
+    await listHoldingsWithQuotes(true);
   const today = todayIso();
   const canCreate = envelopes.length > 0 && assetClasses.length > 0;
 

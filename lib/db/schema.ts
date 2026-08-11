@@ -82,6 +82,14 @@ export const holdings = pgTable(
 
     name: text("name").notNull(),
     isin: text("isin"),
+    /**
+     * Symbole de cotation Yahoo — « NVDA », « CSPX.L ». Distinct de l'ISIN :
+     * un même titre a un symbole par place de cotation, et Yahoo n'indexe pas
+     * par ISIN. Renseigné, il fait passer la ligne en cours automatique.
+     * Volontairement non unique : le même ETF détenu dans deux enveloppes fait
+     * deux lignes qui pointent vers la même cotation.
+     */
+    quoteSymbol: text("quote_symbol"),
 
     /**
      * QUANTITY → on saisit des parts et un cours (ETF, SCPI, ETC Or).
@@ -139,9 +147,35 @@ export const allocationTargets = pgTable(
   ],
 );
 
+/**
+ * Dernière cotation connue, une ligne par symbole.
+ *
+ * Deux rôles à la fois : cache — Yahoo n'est rappelé que si `fetchedAt`
+ * dépasse le délai de péremption — et valeur de repli quand il ne répond pas.
+ * Un cache en mémoire ne remplirait ni l'un ni l'autre : il ne survit ni au
+ * redémarrage, ni au passage sur une autre instance.
+ *
+ * Les taux de change y sont des cotations ordinaires : « USDEUR=X » est une
+ * ligne comme les autres, soumise au même délai.
+ */
+export const quotes = pgTable("quotes", {
+  symbol: text("symbol").primaryKey(),
+  price: numeric("price", { precision: 20, scale: 8 }).notNull(),
+  /** Devise renvoyée par Yahoo — « USD », « EUR », « GBp » (pence). */
+  currency: text("currency").notNull(),
+  /** Horodatage du cours chez Yahoo, distinct de celui de notre appel. */
+  marketTime: timestamp("market_time", { withTimezone: true }),
+  shortName: text("short_name"),
+  fetchedAt: timestamp("fetched_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export type Envelope = typeof envelopes.$inferSelect;
 export type AssetClass = typeof assetClasses.$inferSelect;
 export type Holding = typeof holdings.$inferSelect;
+export type Quote = typeof quotes.$inferSelect;
+export type NewQuote = typeof quotes.$inferInsert;
 export type AllocationTarget = typeof allocationTargets.$inferSelect;
 
 export type NewEnvelope = typeof envelopes.$inferInsert;

@@ -36,6 +36,12 @@
       "sourceType": "github",
       "skillPath": "skills/vercel-optimize/SKILL.md",
       "computedHash": "ad0ef9c5c980f824e2ec19cba5c45426aba923a17e71fbaf6d1830574b62cc44"
+    },
+    "yahoo-finance2": {
+      "source": "gadicc/yahoo-finance2",
+      "sourceType": "github",
+      "skillPath": "skills/yahoo-finance2/SKILL.md",
+      "computedHash": "461e6f119d0499dc3bbbd279a45d9407358d69ac114c8ab176a2bbe8b9630788"
     }
   }
 }

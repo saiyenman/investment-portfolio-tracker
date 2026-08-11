@@ -18,6 +18,21 @@ const eslintConfig = defineConfig([
     // SQL généré par drizzle-kit et rejoué tel quel sur Supabase.
     "drizzle/**",
   ]),
+  {
+    rules: {
+      /*
+        Les Server Actions reçoivent `(état, formData)` de useActionState :
+        la signature est imposée, même quand l'action n'a que faire de l'un
+        des deux. Le préfixe `_` est la convention déjà suivie partout ici
+        (`_previous`) ; la règle par défaut ne la voyait que lorsqu'un
+        paramètre utilisé suivait.
+      */
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;

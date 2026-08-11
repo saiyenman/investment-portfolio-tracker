@@ -43,6 +43,7 @@ export type HoldingFormValues = {
   isin: string | null;
   envelopeId: string;
   assetClassId: string;
+  quoteSymbol: string | null;
   inputMode: string;
   quantity: string;
   unitPrice: string;
@@ -159,9 +160,33 @@ export function HoldingDialog({
                 autoComplete="off"
               />
               <FieldDescription>
-                Facultatif. Servira à récupérer les cours automatiquement.
+                Facultatif, pour mémoire. Ce n&apos;est pas lui qui récupère
+                les cours — Yahoo n&apos;indexe pas par ISIN.
               </FieldDescription>
             </Field>
+
+            {isAmountMode ? null : (
+              <Field>
+                <FieldLabel htmlFor={`quoteSymbol-${uid}`}>
+                  Symbole Yahoo
+                </FieldLabel>
+                <Input
+                  id={`quoteSymbol-${uid}`}
+                  name="quoteSymbol"
+                  defaultValue={holding?.quoteSymbol ?? ""}
+                  placeholder="NVDA, CSPX.L, WPEA.PA…"
+                  maxLength={24}
+                  autoComplete="off"
+                  className="uppercase"
+                />
+                <FieldDescription>
+                  Renseigné, le cours se met à jour tout seul. Le suffixe de
+                  place est souvent obligatoire — « CSPX » est refusé,
+                  « CSPX.L » fonctionne. Une cotation en devise étrangère est
+                  convertie en euros au taux du jour.
+                </FieldDescription>
+              </Field>
+            )}
 
             <Field>
               <FieldLabel>Enveloppe</FieldLabel>

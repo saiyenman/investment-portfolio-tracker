@@ -17,7 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { loadPortfolio } from "@/lib/db/queries";
+import { loadPortfolioWithQuotes } from "@/lib/quotes/load";
 import { formatEuro, formatPct, formatPoints, todayIso } from "@/lib/format";
 import {
   DEFAULT_BAND_PCT,
@@ -40,7 +40,9 @@ const STATUS_LABEL = {
 } as const;
 
 export default async function RebalancePage() {
-  const data = await loadPortfolio();
+  // Mêmes cours que le tableau de bord : des écarts calculés sur d'autres
+  // valeurs enverraient un versement au mauvais endroit.
+  const data = await loadPortfolioWithQuotes();
 
   const summary = computePortfolio({
     holdings: data.holdings,

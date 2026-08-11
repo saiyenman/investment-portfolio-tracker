@@ -30,7 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { loadPortfolio } from "@/lib/db/queries";
+import { QuoteBadge, QuotedPrice } from "@/components/quoted-price";
 import {
   formatDate,
   formatEuro,
@@ -40,8 +40,10 @@ import {
 } from "@/lib/format";
 import { computeEnvelopeHeadroom } from "@/lib/portfolio/rebalance";
 import { computePortfolio } from "@/lib/portfolio/valuation";
+import { loadPortfolioWithQuotes } from "@/lib/quotes/load";
 
 import { QuickPriceForm } from "./quick-price-form";
+import { QuoteAlert, RefreshQuotesButton } from "./quote-status";
 
 function StatTile({
   label,
@@ -64,7 +66,7 @@ function StatTile({
 }
 
 export default async function DashboardPage() {
-  const data = await loadPortfolio();
+  const data = await loadPortfolioWithQuotes();
   const today = todayIso();
 
   const summary = computePortfolio({
@@ -111,14 +113,24 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Tableau de bord
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Répartition au {formatDate(today)}.
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Tableau de bord
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Répartition au {formatDate(today)}.
+          </p>
+        </div>
+        {data.quoteApplied.size + data.quoteRejected.size > 0 ? (
+          <RefreshQuotesButton />
+        ) : null}
       </header>
+
+      <QuoteAlert
+        error={data.quoteError}
+        rejected={[...data.quoteRejected.values()]}
+      />
 
       {summary.staleCount > 0 ? (
         <Alert>
@@ -261,6 +273,7 @@ export default async function DashboardPage() {
               const assetClass = classById.get(holding.assetClassId);
               const envelope = envelopeById.get(holding.envelopeId);
               const isAmountMode = holding.inputMode === "AMOUNT";
+              const quote = data.quoteApplied.get(holding.id);
               return (
                 <li key={holding.id} className="rounded-lg border p-3">
                   <div className="flex items-start justify-between gap-3">
@@ -312,21 +325,26 @@ export default async function DashboardPage() {
                   </dl>
 
                   <div className="mt-3 flex items-center justify-between gap-3 border-t pt-2">
-                    <span className="text-sm text-muted-foreground">
+                    <span className="flex items-center gap-2 text-sm text-muted-foreground">
                       {isAmountMode ? "Montant" : "Cours unitaire"}
+                      {quote ? <QuoteBadge symbol={quote.symbol} /> : null}
                     </span>
-                    <QuickPriceForm
-                      id={holding.id}
-                      inputMode={holding.inputMode}
-                      label={
-                        isAmountMode
-                          ? `Montant de ${holding.name}`
-                          : `Cours de ${holding.name}`
-                      }
-                      defaultValue={toDecimalInput(
-                        isAmountMode ? holding.quantity : holding.unitPrice,
-                      )}
-                    />
+                    {quote ? (
+                      <QuotedPrice quote={quote} />
+                    ) : (
+                      <QuickPriceForm
+                        id={holding.id}
+                        inputMode={holding.inputMode}
+                        label={
+                          isAmountMode
+                            ? `Montant de ${holding.name}`
+                            : `Cours de ${holding.name}`
+                        }
+                        defaultValue={toDecimalInput(
+                          isAmountMode ? holding.quantity : holding.unitPrice,
+                        )}
+                      />
+                    )}
                   </div>
                 </li>
               );
@@ -356,6 +374,7 @@ export default async function DashboardPage() {
                   const assetClass = classById.get(holding.assetClassId);
                   const envelope = envelopeById.get(holding.envelopeId);
                   const isAmountMode = holding.inputMode === "AMOUNT";
+                  const quote = data.quoteApplied.get(holding.id);
                   return (
                     <TableRow key={holding.id}>
                       {/*
@@ -368,7 +387,10 @@ export default async function DashboardPage() {
                       */}
                       <TableCell className="w-full min-w-[12rem] whitespace-normal">
                         <div className="flex flex-col gap-0.5">
-                          <span className="font-medium">{holding.name}</span>
+                          <span className="flex flex-wrap items-center gap-2 font-medium">
+                            {holding.name}
+                            {quote ? <QuoteBadge symbol={quote.symbol} /> : null}
+                          </span>
                           <span className="text-xs text-muted-foreground">
                             {holding.isStalePrice ? (
                               <Badge variant="outline">
@@ -389,19 +411,30 @@ export default async function DashboardPage() {
                       <TableCell className="hidden whitespace-nowrap lg:table-cell">
                         {envelope?.name ?? "—"}
                       </TableCell>
-                      <TableCell>
-                        <QuickPriceForm
-                          id={holding.id}
-                          inputMode={holding.inputMode}
-                          label={
-                            isAmountMode
-                              ? `Montant de ${holding.name}`
-                              : `Cours de ${holding.name}`
-                          }
-                          defaultValue={toDecimalInput(
-                            isAmountMode ? holding.quantity : holding.unitPrice,
-                          )}
-                        />
+                      {/*
+                        Une ligne qui suit le marché n'offre plus de champ de
+                        saisie : ce qu'on y taperait serait écrasé au prochain
+                        appel. Le cours s'affiche avec son détail de conversion.
+                      */}
+                      <TableCell className="text-right">
+                        {quote ? (
+                          <QuotedPrice quote={quote} />
+                        ) : (
+                          <QuickPriceForm
+                            id={holding.id}
+                            inputMode={holding.inputMode}
+                            label={
+                              isAmountMode
+                                ? `Montant de ${holding.name}`
+                                : `Cours de ${holding.name}`
+                            }
+                            defaultValue={toDecimalInput(
+                              isAmountMode
+                                ? holding.quantity
+                                : holding.unitPrice,
+                            )}
+                          />
+                        )}
                       </TableCell>
                       <TableCell className="text-right font-medium tabular-nums">
                         {formatEuro(holding.value)}

@@ -27,6 +27,8 @@ export type HoldingInput = {
   /** Date du cours au format YYYY-MM-DD. */
   priceUpdatedAt: string | null;
   isin?: string | null;
+  /** Symbole de cotation Yahoo. Renseigné, la ligne suit le marché. */
+  quoteSymbol?: string | null;
 };
 
 export type NamedRef = {
