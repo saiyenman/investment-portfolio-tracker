@@ -26,11 +26,12 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
 import { QuoteBadge, QuotedPrice } from "@/components/quoted-price";
+import { SortMenu, type SortColumn } from "@/components/sort-menu";
+import { SortableHeader } from "@/components/sortable-header";
 import {
   formatDate,
   formatEuro,
@@ -41,6 +42,7 @@ import {
 import { computeEnvelopeHeadroom } from "@/lib/portfolio/rebalance";
 import { computePortfolio } from "@/lib/portfolio/valuation";
 import { loadPortfolioWithQuotes } from "@/lib/quotes/load";
+import { parseSort, sortRows, type SortableValue } from "@/lib/sort";
 
 import { QuickPriceForm } from "./quick-price-form";
 import { QuoteAlert, RefreshQuotesButton } from "./quote-status";
@@ -65,9 +67,35 @@ function StatTile({
   );
 }
 
-export default async function DashboardPage() {
+/**
+ * Colonnes triables du détail des lignes.
+ *
+ * Le tri porte sur la valeur sous-jacente, jamais sur la chaîne affichée :
+ * « 17 816,00 € » et « 6 240,00 € » se rangeraient à l'envers en comparaison
+ * de texte, le « 1 » précédant le « 6 ».
+ */
+const DASHBOARD_COLUMNS = [
+  { key: "support", label: "Support", naturalDirection: "asc" },
+  { key: "classe", label: "Classe", naturalDirection: "asc" },
+  { key: "enveloppe", label: "Enveloppe", naturalDirection: "asc" },
+  { key: "cours", label: "Valeur unitaire" },
+  { key: "valeur", label: "Valeur" },
+  { key: "poids", label: "Poids" },
+  { key: "plusvalue", label: "+/-value" },
+] as const satisfies SortColumn<string>[];
+
+type DashboardSortKey = (typeof DASHBOARD_COLUMNS)[number]["key"];
+
+const DASHBOARD_KEYS = DASHBOARD_COLUMNS.map((c) => c.key);
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const data = await loadPortfolioWithQuotes();
   const today = todayIso();
+  const sort = parseSort(await searchParams, DASHBOARD_KEYS);
 
   const summary = computePortfolio({
     holdings: data.holdings,
@@ -82,6 +110,25 @@ export default async function DashboardPage() {
 
   const classById = new Map(data.assetClasses.map((c) => [c.id, c]));
   const envelopeById = new Map(data.envelopes.map((e) => [e.id, e]));
+
+  const accessors: Record<
+    DashboardSortKey,
+    (h: (typeof summary.holdings)[number]) => SortableValue
+  > = {
+    support: (h) => h.name,
+    classe: (h) => classById.get(h.assetClassId)?.name ?? null,
+    enveloppe: (h) => envelopeById.get(h.envelopeId)?.name ?? null,
+    // Un montant en mode AMOUNT n'est pas un cours : c'est le solde qui fait
+    // foi, sans quoi toutes ces lignes se rangeraient à 1.
+    cours: (h) => Number(h.inputMode === "AMOUNT" ? h.quantity : h.unitPrice),
+    valeur: (h) => Number(h.value),
+    poids: (h) => h.weightPct,
+    plusvalue: (h) => (h.gain === null ? null : Number(h.gain)),
+  };
+
+  const rows = sort.key
+    ? sortRows(summary.holdings, accessors[sort.key], sort.direction)
+    : summary.holdings;
 
   if (summary.holdings.length === 0) {
     return (
@@ -252,6 +299,14 @@ export default async function DashboardPage() {
             La valeur unitaire est modifiable directement : en mode montant,
             elle porte le solde de la ligne.
           </CardDescription>
+          {/* Le tri se prend dans les en-têtes dès qu'il y a un tableau. */}
+          <div className="ml-auto md:hidden">
+            <SortMenu
+              columns={[...DASHBOARD_COLUMNS]}
+              basePath="/"
+              state={sort}
+            />
+          </div>
         </CardHeader>
         <CardContent>
           {/*
@@ -269,7 +324,7 @@ export default async function DashboardPage() {
             cours à jour, la tâche du quotidien.
           */}
           <ul className="flex flex-col gap-3 md:hidden">
-            {summary.holdings.map((holding) => {
+            {rows.map((holding) => {
               const assetClass = classById.get(holding.assetClassId);
               const envelope = envelopeById.get(holding.envelopeId);
               const isAmountMode = holding.inputMode === "AMOUNT";
@@ -355,22 +410,66 @@ export default async function DashboardPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Support</TableHead>
-                  <TableHead className="hidden lg:table-cell">Classe</TableHead>
-                  <TableHead className="hidden lg:table-cell">
-                    Enveloppe
-                  </TableHead>
-                  <TableHead className="text-right">Valeur unitaire</TableHead>
-                  <TableHead className="text-right">Valeur</TableHead>
-                  <TableHead className="text-right">Poids</TableHead>
+                  <SortableHeader
+                    columnKey="support"
+                    label="Support"
+                    basePath="/"
+                    state={sort}
+                    naturalDirection="asc"
+                  />
+                  <SortableHeader
+                    columnKey="classe"
+                    label="Classe"
+                    basePath="/"
+                    state={sort}
+                    naturalDirection="asc"
+                    className="hidden lg:table-cell"
+                  />
+                  <SortableHeader
+                    columnKey="enveloppe"
+                    label="Enveloppe"
+                    basePath="/"
+                    state={sort}
+                    naturalDirection="asc"
+                    className="hidden lg:table-cell"
+                  />
+                  <SortableHeader
+                    columnKey="cours"
+                    label="Valeur unitaire"
+                    basePath="/"
+                    state={sort}
+                    align="end"
+                    className="text-right"
+                  />
+                  <SortableHeader
+                    columnKey="valeur"
+                    label="Valeur"
+                    basePath="/"
+                    state={sort}
+                    align="end"
+                    className="text-right"
+                  />
+                  <SortableHeader
+                    columnKey="poids"
+                    label="Poids"
+                    basePath="/"
+                    state={sort}
+                    align="end"
+                    className="text-right"
+                  />
                   {/* 194 px à elle seule : elle ne rentre qu'à partir de lg. */}
-                  <TableHead className="hidden text-right lg:table-cell">
-                    +/-value
-                  </TableHead>
+                  <SortableHeader
+                    columnKey="plusvalue"
+                    label="+/-value"
+                    basePath="/"
+                    state={sort}
+                    align="end"
+                    className="hidden text-right lg:table-cell"
+                  />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {summary.holdings.map((holding) => {
+                {rows.map((holding) => {
                   const assetClass = classById.get(holding.assetClassId);
                   const envelope = envelopeById.get(holding.envelopeId);
                   const isAmountMode = holding.inputMode === "AMOUNT";

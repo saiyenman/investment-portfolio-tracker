@@ -21,7 +21,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { QuoteBadge } from "@/components/quoted-price";
+import { SortMenu, type SortColumn } from "@/components/sort-menu";
+import { SortableHeader } from "@/components/sortable-header";
 import { type HoldingRow } from "@/lib/db/queries";
+import { parseSort, sortRows, type SortableValue } from "@/lib/sort";
 import { formatDate, formatEuro, formatQuantity, todayIso } from "@/lib/format";
 import { holdingValue, isPriceStale } from "@/lib/portfolio/valuation";
 import { listHoldingsWithQuotes } from "@/lib/quotes/load";
@@ -92,13 +95,54 @@ function HoldingActions({
   );
 }
 
-export default async function HoldingsPage() {
+const HOLDINGS_COLUMNS = [
+  { key: "support", label: "Support", naturalDirection: "asc" },
+  { key: "enveloppe", label: "Enveloppe", naturalDirection: "asc" },
+  { key: "classe", label: "Classe", naturalDirection: "asc" },
+  { key: "quantite", label: "Quantité" },
+  { key: "cours", label: "Cours" },
+  { key: "valeur", label: "Valeur" },
+] as const satisfies SortColumn<string>[];
+
+type HoldingsSortKey = (typeof HOLDINGS_COLUMNS)[number]["key"];
+
+const HOLDINGS_KEYS = HOLDINGS_COLUMNS.map((c) => c.key);
+
+/**
+ * Le tri porte sur les valeurs, jamais sur le texte affiché : « 17 816,00 € »
+ * et « 6 240,00 € » se rangeraient à l'envers en comparaison de chaînes.
+ */
+const ACCESSORS: Record<
+  HoldingsSortKey,
+  (h: HoldingRow) => SortableValue
+> = {
+  support: (h) => h.name,
+  enveloppe: (h) => h.envelopeName,
+  classe: (h) => h.assetClassName,
+  // En mode montant, ni la quantité ni le cours ne veulent dire ce que leur
+  // colonne annonce : la ligne porte un solde, et son cours vaut 1. On les
+  // laisse absents, ce qui les renvoie en fin de liste dans les deux sens.
+  quantite: (h) => (h.inputMode === "AMOUNT" ? null : Number(h.quantity)),
+  cours: (h) => (h.inputMode === "AMOUNT" ? null : Number(h.unitPrice)),
+  valeur: (h) => Number(holdingValue(h)),
+};
+
+export default async function HoldingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   // Cours appliqués ici aussi : une même ligne ne peut pas valoir deux
   // montants différents selon l'écran qu'on regarde.
-  const { holdings, envelopes, assetClasses } =
+  const { holdings: allHoldings, envelopes, assetClasses } =
     await listHoldingsWithQuotes(true);
   const today = todayIso();
   const canCreate = envelopes.length > 0 && assetClasses.length > 0;
+
+  const sort = parseSort(await searchParams, HOLDINGS_KEYS);
+  const holdings = sort.key
+    ? sortRows(allHoldings, ACCESSORS[sort.key], sort.direction)
+    : allHoldings;
 
   return (
     <div className="flex flex-col gap-6">
@@ -151,6 +195,14 @@ export default async function HoldingsPage() {
             <CardTitle>
               {holdings.length} ligne{holdings.length > 1 ? "s" : ""}
             </CardTitle>
+            {/* Le tri se prend dans les en-têtes dès qu'il y a un tableau. */}
+            <div className="ml-auto md:hidden">
+              <SortMenu
+                columns={[...HOLDINGS_COLUMNS]}
+                basePath="/holdings"
+                state={sort}
+              />
+            </div>
           </CardHeader>
           <CardContent>
             {/*
@@ -215,18 +267,53 @@ export default async function HoldingsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Support</TableHead>
-                    <TableHead>Enveloppe</TableHead>
-                    <TableHead className="hidden lg:table-cell">
-                      Classe
-                    </TableHead>
-                    <TableHead className="hidden text-right lg:table-cell">
-                      Quantité
-                    </TableHead>
-                    <TableHead className="hidden text-right lg:table-cell">
-                      Cours
-                    </TableHead>
-                    <TableHead className="text-right">Valeur</TableHead>
+                    <SortableHeader
+                      columnKey="support"
+                      label="Support"
+                      basePath="/holdings"
+                      state={sort}
+                      naturalDirection="asc"
+                    />
+                    <SortableHeader
+                      columnKey="enveloppe"
+                      label="Enveloppe"
+                      basePath="/holdings"
+                      state={sort}
+                      naturalDirection="asc"
+                    />
+                    <SortableHeader
+                      columnKey="classe"
+                      label="Classe"
+                      basePath="/holdings"
+                      state={sort}
+                      naturalDirection="asc"
+                      className="hidden lg:table-cell"
+                    />
+                    <SortableHeader
+                      columnKey="quantite"
+                      label="Quantité"
+                      basePath="/holdings"
+                      state={sort}
+                      align="end"
+                      className="hidden text-right lg:table-cell"
+                    />
+                    <SortableHeader
+                      columnKey="cours"
+                      label="Cours"
+                      basePath="/holdings"
+                      state={sort}
+                      align="end"
+                      className="hidden text-right lg:table-cell"
+                    />
+                    <SortableHeader
+                      columnKey="valeur"
+                      label="Valeur"
+                      basePath="/holdings"
+                      state={sort}
+                      align="end"
+                      className="text-right"
+                    />
+                    {/* Non triable : une colonne de boutons n'a pas d'ordre. */}
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
