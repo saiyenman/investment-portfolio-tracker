@@ -31,7 +31,8 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { toDecimalInput, todayIso } from "@/lib/format";
+import { evaluateAmount } from "@/lib/expression";
+import { formatEuro, toDecimalInput, todayIso } from "@/lib/format";
 import { IDLE } from "@/lib/action-state";
 import { notify } from "@/lib/notify";
 
@@ -81,6 +82,19 @@ export function HoldingDialog({
   const isAmountMode = inputMode === "AMOUNT";
   const isEdit = Boolean(holding);
   const uid = holding?.id ?? "new";
+
+  // Montant investi : la saisie peut être un calcul, on en montre le résultat.
+  const [costBasis, setCostBasis] = useState(
+    toDecimalInput(holding?.costBasis),
+  );
+  const cost = evaluateAmount(costBasis);
+  const costError = cost.error;
+  // L'aperçu ne s'affiche que s'il apprend quelque chose : sur « 5100 » il
+  // répéterait la saisie.
+  const costPreview =
+    cost.value !== null && /[+\-/xX×*()]/.test(costBasis)
+      ? formatEuro(cost.value)
+      : null;
 
   useEffect(() => {
     if (state.ok && state.at !== handledAt.current) {
@@ -301,20 +315,43 @@ export function HoldingDialog({
               </FieldDescription>
             </Field>
 
-            <Field>
+            {/*
+              Champ contrôlé, contrairement au reste du formulaire : il faut
+              relire la saisie à chaque frappe pour en afficher le résultat.
+              Le remontage du formulaire par sa `key` réinitialise l'état à la
+              valeur persistée, il n'y a donc rien à synchroniser à la main.
+            */}
+            <Field data-invalid={costError ? true : undefined}>
               <FieldLabel htmlFor={`costBasis-${uid}`}>
                 Montant investi (€)
               </FieldLabel>
               <Input
                 id={`costBasis-${uid}`}
                 name="costBasis"
-                inputMode="decimal"
-                defaultValue={toDecimalInput(holding?.costBasis)}
-                placeholder="5100"
+                inputMode="text"
+                value={costBasis}
+                onChange={(event) => setCostBasis(event.target.value)}
+                placeholder="5100 ou 10x12,20"
                 autoComplete="off"
+                aria-describedby={`costBasis-hint-${uid}`}
               />
-              <FieldDescription>
-                Facultatif — sert uniquement à afficher la plus-value.
+              <FieldDescription id={`costBasis-hint-${uid}`}>
+                {costError ? (
+                  costError
+                ) : (
+                  <>
+                    Facultatif — sert uniquement à afficher la plus-value. Un
+                    calcul est accepté : « 10x12,20 » donne 122 €.
+                    {costPreview ? (
+                      <>
+                        {" "}
+                        <span className="font-medium text-foreground tabular-nums">
+                          = {costPreview}
+                        </span>
+                      </>
+                    ) : null}
+                  </>
+                )}
               </FieldDescription>
             </Field>
 

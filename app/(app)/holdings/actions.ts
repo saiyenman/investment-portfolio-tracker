@@ -10,6 +10,7 @@ import {
   updateHolding,
   updateHoldingValue,
 } from "@/lib/db/queries";
+import { evaluateAmount } from "@/lib/expression";
 import {
   parseDecimalInput,
   parseIsoDate,
@@ -79,6 +80,15 @@ export async function saveHolding(
     );
   }
 
+  // Le montant investi accepte une expression — « 11x181,82 ». Le serveur
+  // refait le calcul plutôt que de faire confiance à celui du navigateur :
+  // cette action est joignable par un POST direct, sans passer par le
+  // formulaire.
+  const costBasis = evaluateAmount(formData.get("costBasis"));
+  if (costBasis.error) {
+    return actionFailure(`Montant investi : ${costBasis.error}`);
+  }
+
   const payload = {
     name: parsed.data.name,
     isin: parseOptionalText(formData.get("isin"), 12),
@@ -93,7 +103,7 @@ export async function saveHolding(
     quantity,
     unitPrice,
     priceUpdatedAt: parseIsoDate(formData.get("priceUpdatedAt")),
-    costBasis: parseDecimalInput(formData.get("costBasis")),
+    costBasis: costBasis.value,
     note: parseOptionalText(formData.get("note")),
   };
 
