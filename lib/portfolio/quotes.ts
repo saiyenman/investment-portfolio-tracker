@@ -16,6 +16,25 @@ import Decimal from "decimal.js";
 export const BASE_CURRENCY = "EUR";
 
 /**
+ * Devises acceptées à la saisie d'un montant. L'ordre pilote le sélecteur.
+ *
+ * Volontairement courte : ce sont les seules devises dans lesquelles un
+ * patrimoine tenu en euros s'achète couramment. Yahoo en convertirait bien
+ * d'autres, mais une liste longue se parcourt mal pour un gain nul.
+ */
+export const INPUT_CURRENCIES = ["EUR", "USD", "GBP", "CHF"] as const;
+
+export type InputCurrency = (typeof INPUT_CURRENCIES)[number];
+
+export type AmountConversion =
+  | { amount: string; rate: string | null; error: null }
+  | {
+      amount: null;
+      rate: null;
+      error: "missing-rate" | "invalid-rate" | "invalid-amount";
+    };
+
+/**
  * Le minimum qu'une ligne doit porter pour recevoir un cours.
  *
  * Type structurel plutôt que `HoldingInput` : les lignes lues en base pour
@@ -175,6 +194,63 @@ export function convertQuote(
         ? quoteDate(quote)
         : quoteDate(rateQuote),
   };
+}
+
+/**
+ * Convertit un montant saisi par l'utilisateur vers l'euro.
+ *
+ * Pendant de `convertQuote` pour un montant plutôt qu'un cours : le prix de
+ * revient d'une action américaine se connaît en dollars, alors que la base ne
+ * stocke que des euros — sans cette conversion la plus-value serait fausse de
+ * l'écart de change.
+ *
+ * Prend le taux tout fait plutôt que le cache des cotations, contrairement à
+ * `convertQuote` : le formulaire appelle la même fonction pour son aperçu, et
+ * le navigateur ne voit qu'un taux, pas la table `quotes`. Pas de gestion des
+ * pence non plus — « GBp » est un code de cotation Yahoo, jamais un choix de
+ * saisie.
+ */
+export function convertAmount(
+  amount: string,
+  currency: string,
+  rate: string | null,
+): AmountConversion {
+  const value = toAmountDecimal(amount);
+  if (value === null) return { amount: null, rate: null, error: "invalid-amount" };
+
+  if (normalizeCurrency(currency) === BASE_CURRENCY) {
+    return { amount: money(value), rate: null, error: null };
+  }
+
+  if (rate === null || rate === "") {
+    return { amount: null, rate: null, error: "missing-rate" };
+  }
+
+  const factor = toPositiveDecimal(rate);
+  if (factor === null) return { amount: null, rate: null, error: "invalid-rate" };
+
+  return { amount: money(value.times(factor)), rate, error: null };
+}
+
+/**
+ * Un montant peut valoir zéro, contrairement à un cours : `toPositiveDecimal`
+ * le rejetterait alors qu'une ligne à 0 € de prix de revient est légitime.
+ */
+function toAmountDecimal(value: string | null | undefined): Decimal | null {
+  if (value === null || value === undefined || value === "") return null;
+  let d: Decimal;
+  try {
+    d = new Decimal(value);
+  } catch {
+    return null;
+  }
+  if (!d.isFinite() || d.isNegative()) return null;
+  return d;
+}
+
+/** Arrondi de sortie, calé sur le `numeric(18,2)` de `cost_basis`. */
+function money(value: Decimal): string {
+  return value.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2);
 }
 
 function isRejection(

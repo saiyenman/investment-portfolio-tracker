@@ -1,7 +1,7 @@
 import { InfoHint } from "@/components/info-hint";
 import { Badge } from "@/components/ui/badge";
 import type { AppliedQuote } from "@/lib/portfolio/quotes";
-import { formatEuro } from "@/lib/format";
+import { formatEuro, formatNumber } from "@/lib/format";
 
 /**
  * Cours issu du marché, avec le détail de sa provenance.
@@ -41,16 +41,6 @@ export function QuoteBadge({ symbol }: { symbol: string }) {
       {symbol}
     </Badge>
   );
-}
-
-/** Nombre brut lisible, sans symbole monétaire — la devise est dite à côté. */
-function formatNumber(value: string): string {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return value;
-  return new Intl.NumberFormat("fr-FR", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 4,
-  }).format(n);
 }
 
 function formatDay(iso: string): string {

@@ -32,7 +32,13 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { evaluateAmount } from "@/lib/expression";
-import { formatEuro, toDecimalInput, todayIso } from "@/lib/format";
+import { formatEuro, formatNumber, toDecimalInput, todayIso } from "@/lib/format";
+import {
+  BASE_CURRENCY,
+  INPUT_CURRENCIES,
+  convertAmount,
+  rateSymbolFor,
+} from "@/lib/portfolio/quotes";
 import { IDLE } from "@/lib/action-state";
 import { notify } from "@/lib/notify";
 
@@ -55,10 +61,16 @@ export type HoldingFormValues = {
 
 type Option = { id: string; name: string };
 
+const CURRENCY_ITEMS = INPUT_CURRENCIES.map((code) => ({
+  value: code,
+  label: code,
+}));
+
 export function HoldingDialog({
   holding,
   envelopes,
   assetClasses,
+  rates,
   children,
   variant = "outline",
   size = "sm",
@@ -66,6 +78,8 @@ export function HoldingDialog({
   holding?: HoldingFormValues;
   envelopes: Option[];
   assetClasses: Option[];
+  /** Taux vers l'euro des devises de saisie, préchargés par la page. */
+  rates: Record<string, string>;
   children: React.ReactNode;
   variant?: React.ComponentProps<typeof Button>["variant"];
   size?: React.ComponentProps<typeof Button>["size"];
@@ -87,13 +101,28 @@ export function HoldingDialog({
   const [costBasis, setCostBasis] = useState(
     toDecimalInput(holding?.costBasis),
   );
+  // Toujours l'euro au départ, même en modification : le sélecteur dit la
+  // devise de ce qu'on tape maintenant, pas une propriété de la ligne. La
+  // valeur relue en base est déjà convertie ; la faire repartir en dollars la
+  // reconvertirait à chaque enregistrement.
+  const [costCurrency, setCostCurrency] = useState<string>(BASE_CURRENCY);
+  const isForeignCost = costCurrency !== BASE_CURRENCY;
+  const costRate = rates[costCurrency] ?? null;
+  const missingRate = isForeignCost && costRate === null;
+
   const cost = evaluateAmount(costBasis);
   const costError = cost.error;
-  // L'aperçu ne s'affiche que s'il apprend quelque chose : sur « 5100 » il
-  // répéterait la saisie.
+  // Même conversion que celle du serveur, sur le taux préchargé par la page.
+  const converted =
+    cost.value === null
+      ? null
+      : convertAmount(cost.value, costCurrency, costRate);
+  // L'aperçu ne s'affiche que s'il apprend quelque chose : sur « 5100 » en
+  // euros il répéterait la saisie, alors qu'un calcul ou une devise étrangère
+  // donnent un montant que l'utilisateur ne connaît pas encore.
   const costPreview =
-    cost.value !== null && /[+\-/xX×*()]/.test(costBasis)
-      ? formatEuro(cost.value)
+    converted?.amount != null && (isForeignCost || /[+\-/xX×*()]/.test(costBasis))
+      ? formatEuro(converted.amount)
       : null;
 
   useEffect(() => {
@@ -323,25 +352,66 @@ export function HoldingDialog({
             */}
             <Field data-invalid={costError ? true : undefined}>
               <FieldLabel htmlFor={`costBasis-${uid}`}>
-                Montant investi (€)
+                Montant investi
               </FieldLabel>
-              <Input
-                id={`costBasis-${uid}`}
-                name="costBasis"
-                inputMode="text"
-                value={costBasis}
-                onChange={(event) => setCostBasis(event.target.value)}
-                placeholder="5100 ou 10x12,20"
-                autoComplete="off"
-                aria-describedby={`costBasis-hint-${uid}`}
-              />
+              <div className="flex items-center gap-2">
+                <Input
+                  id={`costBasis-${uid}`}
+                  name="costBasis"
+                  inputMode="text"
+                  value={costBasis}
+                  onChange={(event) => setCostBasis(event.target.value)}
+                  placeholder="5100 ou 10x12,20"
+                  autoComplete="off"
+                  aria-describedby={`costBasis-hint-${uid}`}
+                  className="flex-1"
+                />
+                <Select
+                  name="costCurrency"
+                  items={CURRENCY_ITEMS}
+                  value={costCurrency}
+                  onValueChange={(value) => setCostCurrency(String(value))}
+                >
+                  <SelectTrigger
+                    className="w-24"
+                    aria-label="Devise du montant investi"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {INPUT_CURRENCIES.map((code) => (
+                        <SelectItem key={code} value={code}>
+                          {code}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
               <FieldDescription id={`costBasis-hint-${uid}`}>
                 {costError ? (
                   costError
+                ) : missingRate ? (
+                  <>
+                    Taux {costCurrency} → {BASE_CURRENCY} indisponible pour
+                    l&apos;instant. Réessayez plus tard, ou saisissez le montant
+                    en euros.
+                  </>
                 ) : (
                   <>
                     Facultatif — sert uniquement à afficher la plus-value. Un
                     calcul est accepté : « 10x12,20 » donne 122 €.
+                    {isForeignCost && costRate ? (
+                      <>
+                        {" "}
+                        Converti au taux {rateSymbolFor(costCurrency)} de{" "}
+                        <span className="tabular-nums">
+                          {formatNumber(costRate)}
+                        </span>{" "}
+                        et enregistré en euros.
+                      </>
+                    ) : null}
                     {costPreview ? (
                       <>
                         {" "}

@@ -28,6 +28,7 @@ import { parseSort, sortRows, type SortableValue } from "@/lib/sort";
 import { formatDate, formatEuro, formatQuantity, todayIso } from "@/lib/format";
 import { holdingValue, isPriceStale } from "@/lib/portfolio/valuation";
 import { listHoldingsWithQuotes } from "@/lib/quotes/load";
+import { loadInputRates } from "@/lib/quotes/rates";
 import { cn } from "@/lib/utils";
 
 import { HoldingDialog } from "./holding-dialog";
@@ -74,10 +75,12 @@ function HoldingActions({
   holding,
   envelopes,
   assetClasses,
+  rates,
 }: {
   holding: HoldingRow;
   envelopes: Option[];
   assetClasses: Option[];
+  rates: Record<string, string>;
 }) {
   return (
     <>
@@ -85,6 +88,7 @@ function HoldingActions({
         holding={holding}
         envelopes={envelopes}
         assetClasses={assetClasses}
+        rates={rates}
         variant="ghost"
       >
         Modifier
@@ -136,6 +140,10 @@ export default async function HoldingsPage({
   // montants différents selon l'écran qu'on regarde.
   const { holdings: allHoldings, envelopes, assetClasses } =
     await listHoldingsWithQuotes(true);
+  // Enchaîné et non parallélisé : les deux chargements visent souvent les mêmes
+  // lignes de `quotes`. En séquence, celui-ci lit ce que le précédent vient
+  // d'écrire au lieu d'appeler Yahoo une seconde fois.
+  const rates = await loadInputRates();
   const today = todayIso();
   const canCreate = envelopes.length > 0 && assetClasses.length > 0;
 
@@ -155,7 +163,11 @@ export default async function HoldingsPage({
           </p>
         </div>
         {canCreate ? (
-          <HoldingDialog envelopes={envelopes} assetClasses={assetClasses}>
+          <HoldingDialog
+            envelopes={envelopes}
+            assetClasses={assetClasses}
+            rates={rates}
+          >
             <PlusIcon data-icon="inline-start" />
             Nouvelle ligne
           </HoldingDialog>
@@ -180,6 +192,7 @@ export default async function HoldingsPage({
               <HoldingDialog
                 envelopes={envelopes}
                 assetClasses={assetClasses}
+                rates={rates}
                 variant="default"
                 size="default"
               >
@@ -257,6 +270,7 @@ export default async function HoldingsPage({
                       holding={holding}
                       envelopes={envelopes}
                       assetClasses={assetClasses}
+                      rates={rates}
                     />
                   </div>
                 </li>
@@ -361,6 +375,7 @@ export default async function HoldingsPage({
                               holding={holding}
                               envelopes={envelopes}
                               assetClasses={assetClasses}
+                              rates={rates}
                             />
                           </div>
                         </TableCell>

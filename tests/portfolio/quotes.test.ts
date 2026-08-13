@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   applyQuotes,
+  convertAmount,
   quotableSymbols,
   rateSymbolFor,
   type StoredQuote,
@@ -207,6 +208,56 @@ describe("lignes hors périmètre", () => {
     expect(holdings[0].unitPrice).toBe("1");
     expect(holdings[0].quantity).toBe("8400");
     expect(rejected.size).toBe(0);
+  });
+});
+
+describe("conversion d'un montant saisi", () => {
+  it("laisse un montant en euros intact, sans réclamer de taux", () => {
+    expect(convertAmount("5100", "EUR", null)).toEqual({
+      amount: "5100.00",
+      rate: null,
+      error: null,
+    });
+  });
+
+  it("multiplie un montant en dollars par le taux vers l'euro", () => {
+    // 5 100 USD × 0,8661 = 4 417,11 € — le prix de revient d'un NVDA en CTO.
+    expect(convertAmount("5100", "USD", "0.8661")).toEqual({
+      amount: "4417.11",
+      rate: "0.8661",
+      error: null,
+    });
+  });
+
+  it("arrondit au centime supérieur sur un demi-centime exact", () => {
+    // 2,50 × 1,002 = 2,505 : sans arrondi explicite, le NUMERIC(18,2) de la
+    // base trancherait à notre place.
+    expect(convertAmount("2.50", "USD", "1.002").amount).toBe("2.51");
+  });
+
+  it("accepte un montant nul", () => {
+    expect(convertAmount("0", "USD", "0.8661").amount).toBe("0.00");
+  });
+
+  it("refuse un taux absent plutôt que de stocker des dollars", () => {
+    expect(convertAmount("5100", "USD", null).error).toBe("missing-rate");
+    expect(convertAmount("5100", "CHF", "").error).toBe("missing-rate");
+  });
+
+  it.each([
+    ["nul", "0"],
+    ["négatif", "-1"],
+    ["non numérique", "n/a"],
+  ])("refuse un taux %s", (_label, rate) => {
+    expect(convertAmount("5100", "USD", rate).error).toBe("invalid-rate");
+  });
+
+  it.each([
+    ["négatif", "-10"],
+    ["non numérique", "abc"],
+    ["vide", ""],
+  ])("refuse un montant %s", (_label, amount) => {
+    expect(convertAmount(amount, "USD", "0.8661").error).toBe("invalid-amount");
   });
 });
 

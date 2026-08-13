@@ -12,6 +12,12 @@ import {
 } from "@/lib/db/queries";
 import { evaluateAmount } from "@/lib/expression";
 import {
+  BASE_CURRENCY,
+  INPUT_CURRENCIES,
+  convertAmount,
+} from "@/lib/portfolio/quotes";
+import { loadInputRates } from "@/lib/quotes/rates";
+import {
   parseDecimalInput,
   parseIsoDate,
   parseOptionalText,
@@ -41,6 +47,10 @@ const holdingSchema = z.object({
   envelopeId: z.uuid("Enveloppe invalide."),
   assetClassId: z.uuid("Classe d'actifs invalide."),
   inputMode: z.enum(["QUANTITY", "AMOUNT"]),
+  // Devise de saisie du montant investi, jamais stockée : elle ne sert qu'à
+  // ramener le montant en euros. Validée ici pour qu'un POST direct portant un
+  // code inconnu soit refusé avant tout appel réseau.
+  costCurrency: z.enum(INPUT_CURRENCIES).default(BASE_CURRENCY),
 });
 
 export async function saveHolding(
@@ -56,6 +66,8 @@ export async function saveHolding(
     envelopeId: formData.get("envelopeId"),
     assetClassId: formData.get("assetClassId"),
     inputMode: formData.get("inputMode"),
+    // `null` ne déclencherait pas le défaut zod, contrairement à `undefined`.
+    costCurrency: formData.get("costCurrency") ?? undefined,
   });
   if (!parsed.success) {
     return actionFailure(parsed.error.issues[0]!.message);
@@ -89,6 +101,30 @@ export async function saveHolding(
     return actionFailure(`Montant investi : ${costBasis.error}`);
   }
 
+  // Saisi en devise étrangère, le montant est converti puis stocké en euros :
+  // la base est mono-devise, et la plus-value compare ce coût à une valeur
+  // elle-même déjà convertie. Le serveur refait la conversion plutôt que de
+  // faire confiance à l'aperçu du navigateur — même raison que pour le calcul.
+  // Le taux sort du même cache, il est donc identique à celui affiché tant que
+  // le quart d'heure n'a pas tourné.
+  const { costCurrency } = parsed.data;
+  let costBasisEur = costBasis.value;
+  if (costBasisEur !== null && costCurrency !== BASE_CURRENCY) {
+    const rates = await loadInputRates();
+    const converted = convertAmount(
+      costBasisEur,
+      costCurrency,
+      rates[costCurrency] ?? null,
+    );
+    if (converted.error !== null) {
+      return actionFailure(
+        `Le taux ${costCurrency} → ${BASE_CURRENCY} est indisponible pour l'instant. ` +
+          "Réessayez, ou saisissez le montant investi en euros.",
+      );
+    }
+    costBasisEur = converted.amount;
+  }
+
   const payload = {
     name: parsed.data.name,
     isin: parseOptionalText(formData.get("isin"), 12),
@@ -103,7 +139,7 @@ export async function saveHolding(
     quantity,
     unitPrice,
     priceUpdatedAt: parseIsoDate(formData.get("priceUpdatedAt")),
-    costBasis: costBasis.value,
+    costBasis: costBasisEur,
     note: parseOptionalText(formData.get("note")),
   };
 

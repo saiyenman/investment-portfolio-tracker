@@ -29,6 +29,11 @@ const QTY = new Intl.NumberFormat("fr-FR", {
   maximumFractionDigits: 6,
 });
 
+const PLAIN = new Intl.NumberFormat("fr-FR", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 4,
+});
+
 export function formatEuro(value: string | number | null | undefined): string {
   if (value === null || value === undefined || value === "") return "—";
   return EUR.format(Number(value));
@@ -57,6 +62,17 @@ export function formatSignedEuro(value: string | number): string {
 
 export function formatQuantity(value: string | number): string {
   return QTY.format(Number(value));
+}
+
+/**
+ * Nombre brut lisible, sans symbole monétaire — la devise ou le taux est dit à
+ * côté. Rend la valeur telle quelle si elle n'est pas un nombre : mieux vaut
+ * afficher « abc » qu'un « NaN » sur un écran de patrimoine.
+ */
+export function formatNumber(value: string | number): string {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return String(value);
+  return PLAIN.format(n);
 }
 
 /**
